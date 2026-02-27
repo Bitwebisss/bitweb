@@ -71,7 +71,7 @@ Now that all the required dependencies are installed, let's clone the Bitcoin Co
 All build scripts and commands will run from this directory.
 
 ``` bash
-git clone https://github.com/bitcoin/bitcoin.git
+git clone https://github.com/Bitwebisss/bitcoin.git
 ```
 
 ### 5. Install Optional Dependencies
