@@ -3323,7 +3323,7 @@ static RPCHelpMan loadtxoutset()
         "contents are always checked by hash.\n\n"
 
         "You can find more information on this process in the `assumeutxo` design "
-        "document (<https://github.com/bitcoin/bitcoin/blob/master/doc/design/assumeutxo.md>).",
+        "document (<https://github.com/Bitwebisss/bitcoin/blob/master/doc/design/assumeutxo.md>).",
         {
             {"path",
                 RPCArg::Type::STR,

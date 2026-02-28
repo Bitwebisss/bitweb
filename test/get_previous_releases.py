@@ -160,7 +160,7 @@ def download_binary(tag, args) -> int:
         archive_format = 'zip'
 
     archive = f'bitcoin-{tag[1:]}-{host}.{archive_format}'
-    archive_url = f'https://bitcoincore.org/{bin_path}/{archive}'
+    archive_url = f'https://bitwebcore.net/{bin_path}/{archive}'
 
     print(f'Fetching: {archive_url}')
 

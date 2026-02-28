@@ -79,7 +79,7 @@ Release Process
 - Merge the release notes from [the wiki](https://github.com/bitcoin-core/bitcoin-devwiki/wiki/) into the branch.
 - Ensure the "Needs release note" label is removed from all relevant pull
   requests and issues:
-  https://github.com/bitcoin/bitcoin/issues?q=label%3A%22Needs+release+note%22
+  https://github.com/Bitwebisss/bitcoin/issues?q=label%3A%22Needs+release+note%22
 
 #### Tagging a release (candidate)
 
@@ -101,7 +101,7 @@ Check out the source code in the following directory hierarchy.
     cd /path/to/your/toplevel/build
     git clone https://github.com/bitcoin-core/guix.sigs.git
     git clone https://github.com/bitcoin-core/bitcoin-detached-sigs.git
-    git clone https://github.com/bitcoin/bitcoin.git
+    git clone https://github.com/Bitwebisss/bitcoin.git
 
 ### Write the release notes
 
@@ -236,7 +236,7 @@ cat "$VERSION"/*/all.SHA256SUMS.asc > SHA256SUMS.asc
 ```
 
 
-- Upload to the bitcoincore.org server:
+- Upload to the bitwebcore.net server:
     1. The contents of each `./bitcoin/guix-build-${VERSION}/output/${HOST}/` directory.
 
        Guix will output all of the results into host subdirectories, but the SHA256SUMS
@@ -263,14 +263,14 @@ cat "$VERSION"/*/all.SHA256SUMS.asc > SHA256SUMS.asc
   ```
 
   Insert the magnet URI into the announcement sent to mailing lists. This permits
-  people without access to `bitcoincore.org` to download the binary distribution.
+  people without access to `bitwebcore.net` to download the binary distribution.
   Also put it into the `optional_magnetlink:` slot in the YAML file for
-  bitcoincore.org.
+  bitwebcore.net.
 
 - Archive the release notes for the new version to `doc/release-notes/release-notes-${VERSION}.md`
   (branch `master` and branch of the release).
 
-- Update the bitcoincore.org website
+- Update the bitwebcore.net website
 
   - blog post
 
@@ -283,9 +283,9 @@ cat "$VERSION"/*/all.SHA256SUMS.asc > SHA256SUMS.asc
 
 - Update repositories
 
-  - Delete post-EOL [release branches](https://github.com/bitcoin/bitcoin/branches/all) and create a tag `v${branch_name}-final`.
+  - Delete post-EOL [release branches](https://github.com/Bitwebisss/bitcoin/branches/all) and create a tag `v${branch_name}-final`.
 
-  - Delete ["Needs backport" labels](https://github.com/bitcoin/bitcoin/labels?q=backport) for non-existing branches.
+  - Delete ["Needs backport" labels](https://github.com/Bitwebisss/bitcoin/labels?q=backport) for non-existing branches.
 
   - Update packaging repo
 
@@ -293,13 +293,13 @@ cat "$VERSION"/*/all.SHA256SUMS.asc > SHA256SUMS.asc
 
       - Push the snap, see https://github.com/bitcoin-core/packaging/blob/main/snap/local/build.md
 
-  - Create a [new GitHub release](https://github.com/bitcoin/bitcoin/releases/new) with a link to the archived release notes
+  - Create a [new GitHub release](https://github.com/Bitwebisss/bitcoin/releases/new) with a link to the archived release notes
 
 - Announce the release:
 
   - bitcoin-dev and bitcoin-core-dev mailing list
 
-  - Bitcoin Core announcements list https://bitcoincore.org/en/list/announcements/join/
+  - Bitcoin Core announcements list https://bitwebcore.net/en/list/announcements/join/
 
   - Bitcoin Core Twitter https://twitter.com/bitcoincoreorg
 
