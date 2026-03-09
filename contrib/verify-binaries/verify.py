@@ -686,7 +686,7 @@ def main():
         default=bool_from_env('BINVERIFY_REQUIRE_ALL_HOSTS'),
         help=(
             f'If set, require all hosts ({HOST1}, {HOST2}) to provide signatures. '
-            '(Sometimes bitcoin.org lags behind bitwebcore.net.)')
+            '(Sometimes bitwebcore.net lags behind bitwebcore.net.)')
     )
 
     bin_parser = subparsers.add_parser("bin", help="Verify local binaries.")
