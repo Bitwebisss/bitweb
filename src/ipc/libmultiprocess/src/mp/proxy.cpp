@@ -181,7 +181,7 @@ void EventLoop::addAsyncCleanup(std::function<void()> fn)
     // order, and add cleanup callbacks to the end of the list so they can be
     // run starting from the beginning of the list.
     //
-    // In bitcoin core, running these callbacks in the right order is
+    // In Bitweb Core, running these callbacks in the right order is
     // particularly important for the wallet process, because it uses blocking
     // shared_ptrs and requires Chain::Notification pointers owned by the node
     // process to be destroyed before the WalletLoader objects owned by the node

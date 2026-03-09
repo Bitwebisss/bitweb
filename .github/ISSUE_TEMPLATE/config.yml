@@ -1,8 +1,8 @@
 blank_issues_enabled: true
 contact_links:
-  - name: Bitcoin Core Security Policy
+  - name: Bitweb Core Security Policy
     url: https://github.com/Bitwebisss/bitcoin/blob/master/SECURITY.md
     about: View security policy
-  - name: Bitcoin Core Developers
+  - name: Bitweb Core Developers
     url: https://bitwebcore.net
-    about: Bitcoin Core homepage
+    about: Bitweb Core homepage
