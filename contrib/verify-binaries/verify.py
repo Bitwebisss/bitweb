@@ -15,7 +15,7 @@ here, but by default is based upon local GPG trust settings.
 
 The builder keys are available in the guix.sigs repo:
 
-    https://github.com/bitcoin-core/guix.sigs/tree/main/builder-keys
+    https://github.com/Bitwebisss/guix.sigs/tree/main/builder-keys
 
 If a minimum good, trusted signature threshold is met on the sum file, we then
 download the files specified in SHA256SUMS, and check if the hashes of these
@@ -48,7 +48,7 @@ from pathlib import PurePath, Path
 # The primary host; this will fail if we can't retrieve files from here.
 HOST1 = "https://bitwebcore.net"
 HOST2 = "https://bitwebcore.net"
-VERSIONPREFIX = "bitcoin-core-"
+VERSIONPREFIX = "bitweb-core-"
 SUMS_FILENAME = 'SHA256SUMS'
 SIGNATUREFILENAME = f"{SUMS_FILENAME}.asc"
 
@@ -378,7 +378,7 @@ def verify_shasums_signature(
 
     # Decide which keys we trust, though not "trust" in the GPG sense, but rather
     # which pubkeys convince us that this sums file is legitimate. In other words,
-    # which pubkeys within the Bitcoin community do we trust for the purposes of
+    # which pubkeys within the Bitweb community do we trust for the purposes of
     # binary verification?
     trusted_keys = set()
     if args.trusted_keys:
@@ -453,7 +453,7 @@ def verify_binary_hashes(hashes_to_verify: list[list[str]]) -> tuple[ReturnCode,
 
 
 def verify_published_handler(args: argparse.Namespace) -> ReturnCode:
-    WORKINGDIR = Path(tempfile.gettempdir()) / f"bitcoin_verify_binaries.{args.version}"
+    WORKINGDIR = Path(tempfile.gettempdir()) / f"bitweb_verify_binaries.{args.version}"
 
     def cleanup():
         log.info("cleaning up files")
@@ -673,7 +673,7 @@ def main():
     pub_parser.set_defaults(func=verify_published_handler)
     pub_parser.add_argument(
         'version', type=str, help=(
-            f'version of the bitcoin release to download; of the format '
+            f'version of the bitweb release to download; of the format '
             f'{VERSION_FORMAT}. Example: {VERSION_EXAMPLE}')
     )
     pub_parser.add_argument(

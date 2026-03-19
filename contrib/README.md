@@ -3,7 +3,7 @@ Repository Tools
 
 ### [Developer tools](/contrib/devtools) ###
 Specific tools for developers working on this repository.
-Additional tools, including the `github-merge.py` script, are available in the [maintainer-tools](https://github.com/bitcoin-core/bitcoin-maintainer-tools) or [bitweb-maintainer-tools](https://github.com/bitweb-project/bitcoin-maintainer-tools) repository, last have some extra tools.
+Additional tools, including the `github-merge.py` script, are available in the [maintainer-tools](https://github.com/bitcoin-core/bitcoin-maintainer-tools) or [bitweb-maintainer-tools](https://github.com/Bitwebisss/bitweb-maintainer-tools) repository, last have some extra tools.
 
 ### [Verify-Commits](/contrib/verify-commits) ###
 Tool to verify that every merge commit was signed by a developer using the `github-merge.py` script.
@@ -24,7 +24,7 @@ Build Tools and Keys
 ### Packaging ###
 The [Debian](/contrib/debian) subfolder contains the copyright file.
 
-All other packaging related files can be found in the [bitcoin-core/packaging](https://github.com/bitcoin-core/packaging) ot [bitweb-project/packaging](https://github.com/bitweb-project/packaging) repository.
+All other packaging related files can be found in the [bitcoin-core/packaging](https://github.com/bitcoin-core/packaging) ot [Bitwebisss/packaging](https://github.com/Bitwebisss/packaging) repository.
 
 ### [MacDeploy](/contrib/macdeploy) ###
 Scripts and notes for Mac builds.

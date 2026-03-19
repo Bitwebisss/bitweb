@@ -17,7 +17,7 @@ using util::Join;
 
 /**
  * Name of client reported in the 'version' message. Report the same name
- * for both bitcoind and bitcoin-qt, to make it harder for attackers to
+ * for both bitwebd and bitweb-qt, to make it harder for attackers to
  * target servers or GUI users specifically.
  */
 const std::string UA_NAME("Satoshi");
@@ -83,7 +83,7 @@ std::string CopyrightHolders(const std::string& strPrefix)
 
 std::string LicenseInfo()
 {
-    const std::string URL_SOURCE_CODE = "<https://github.com/Bitwebisss/bitcoin>";
+    const std::string URL_SOURCE_CODE = "<https://github.com/Bitwebisss/bitweb>";
 
     return CopyrightHolders(strprintf(_("Copyright (C) %i-%i"), 2009, COPYRIGHT_YEAR).translated + " ") + "\n" +
            "\n" +

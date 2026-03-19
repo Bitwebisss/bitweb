@@ -1,6 +1,6 @@
 # Bootstrappable Bitweb Core Builds
 
-This directory contains the files necessary to perform bootstrappable Bitcoin
+This directory contains the files necessary to perform bootstrappable Bitweb
 Core builds.
 
 [Bootstrappability][b17e] furthers our binary security guarantees by allowing us
@@ -108,7 +108,7 @@ worktree to save disk space:
 
 Much like how Gitian build outputs are attested to in a `gitian.sigs`
 repository, Guix build outputs are attested to in the [`guix.sigs`
-repository](https://github.com/bitcoin-core/guix.sigs).
+repository](https://github.com/Bitwebisss/guix.sigs).
 
 After you've cloned the `guix.sigs` repository, to attest to the current
 worktree's commit/tag:

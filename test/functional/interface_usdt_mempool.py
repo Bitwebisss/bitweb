@@ -4,7 +4,7 @@
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 """  Tests the mempool:* tracepoint API interface.
-     See https://github.com/Bitwebisss/bitcoin/blob/master/doc/tracing.md#context-mempool
+     See https://github.com/Bitwebisss/bitweb/blob/master/doc/tracing.md#context-mempool
 """
 
 import ctypes
