@@ -72,7 +72,7 @@ std::string FormatSubVersion(const std::string& name, int nClientVersion, const 
 std::string CopyrightHolders(const std::string& strPrefix)
 {
     const auto copyright_devs = strprintf(COPYRIGHT_HOLDERS, COPYRIGHT_HOLDERS_SUBSTITUTION);
-	// Bitweb Core
+    // Bitweb Core
     std::string strCopyrightHolders = strprintf("Copyright (C) %i-%i ", 2021, COPYRIGHT_YEAR) + copyright_devs;
 
     // Make sure Bitcoin Core copyright is not removed by accident
