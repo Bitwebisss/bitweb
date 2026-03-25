@@ -338,6 +338,26 @@ class NetTest(BitcoinTestFramework):
         self.restart_node(1, ["-checkaddrman=1", "-test=addrman"], clear_addrman=True)
         node = self.nodes[1]
 
+        # Find new colliding address after default port was changed.
+        colliding_address = None
+        tmp_node = self.nodes[1]
+        for third in range(256):
+            for fourth in range(256):
+                candidate = f"1.2.{third}.{fourth}"
+                if candidate in ("1.2.3.4", "1.0.0.0", "2.0.0.0"):
+                    continue
+                # add 1.2.3.4 to tried first to create the collision target
+                tmp_node.addpeeraddress(address="1.2.3.4", tried=True, port=26333)
+                result = tmp_node.addpeeraddress(address=candidate, tried=True, port=26333)
+                self.restart_node(1, ["-checkaddrman=1", "-test=addrman"], clear_addrman=True)
+                tmp_node = self.nodes[1]
+                if result == {"success": False, "error": "failed-adding-to-tried"}:
+                    colliding_address = candidate
+                    self.log.info(f"HARDCODE THIS ADDRESS: {colliding_address}")
+                    break
+            if colliding_address:
+                break
+
         self.log.debug("Test that addpeeraddress is a hidden RPC")
         # It is hidden from general help, but its detailed help may be called directly.
         assert "addpeeraddress" not in node.help()
@@ -384,22 +404,6 @@ class NetTest(BitcoinTestFramework):
         assert_equal(len(node.getnodeaddresses(count=0)), 2)
 
         self.log.debug("Test that adding an address, which collides with the address in tried table, fails")
-
-        # Find new colliding address after default port was changed.
-        colliding_address = None
-        for third in range(256):
-            for fourth in range(256):
-                candidate = f"1.2.{third}.{fourth}"
-                if candidate in ("1.2.3.4", "1.0.0.0", "2.0.0.0"):
-                    continue
-                result = node.addpeeraddress(address=candidate, tried=True, port=26333)
-                if result == {"success": False, "error": "failed-adding-to-tried"}:
-                    colliding_address = candidate
-                    self.log.info(f"Found colliding address: {colliding_address}")
-                    break
-            if colliding_address:
-                break
-        assert colliding_address is not None, "Could not find a colliding address"
 
         assert_equal(node.addpeeraddress(address=colliding_address, tried=True, port=26333), {"success": False, "error": "failed-adding-to-tried"})
         addrman_info = node.getaddrmaninfo()
