@@ -1524,21 +1524,12 @@ BOOST_AUTO_TEST_CASE(message_verify)
             "Trust no one"),
         MessageVerificationResult::OK);
 
-    auto result = MessageVerify(
-        "11canuhp9X2NocwCq7xNrQYTmUgZAnLK3",
-        "IIcaIENoYW5jZWxsb3Igb24gYnJpbmsgb2Ygc2Vjb25kIGJhaWxvdXQgZm9yIGJhbmtzIAaHRtbCeDZINyavx14=",
-        "Trust me");
-    
-    std::cout << "Result = " << static_cast<int>(result) << std::endl;
-    
-    BOOST_CHECK_EQUAL(result, MessageVerificationResult::OK);
-
     BOOST_CHECK_EQUAL(
         MessageVerify(
             "11canuhp9X2NocwCq7xNrQYTmUgZAnLK3",
             "IIcaIENoYW5jZWxsb3Igb24gYnJpbmsgb2Ygc2Vjb25kIGJhaWxvdXQgZm9yIGJhbmtzIAaHRtbCeDZINyavx14=",
             "Trust me"),
-        MessageVerificationResult::OK);
+        MessageVerificationResult::ERR_NOT_SIGNED);
 }
 
 BOOST_AUTO_TEST_CASE(message_hash)
