@@ -24,7 +24,7 @@ NET_MAGIC_BYTES = {
     b"\x0a\x03\xcf\x40": "Signet",
     b"\x1b\xcc\x08\x05": "Testnet3",
     b"\x2c\x22\x3c\xad": "Testnet4",
-    b"\xea\xb1\xa5\xde" "Regtest",
+    b"\xea\xb1\xa5\xde": "Regtest",
 }
 
 
