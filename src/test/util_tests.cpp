@@ -1524,15 +1524,14 @@ BOOST_AUTO_TEST_CASE(message_verify)
             "Trust no one"),
         MessageVerificationResult::OK);
 
-    {
-        const std::array<unsigned char, 32> privkey_bytes_2 = {};
-        CKey dbg_key2;
-        dbg_key2.Set(privkey_bytes_2.begin(), privkey_bytes_2.end(), false); // false = uncompressed
-        std::string dbg_sig2;
-        MessageSign(dbg_key2, "Trust me", dbg_sig2);
-        BOOST_TEST_MESSAGE("DEBUG sig for 'Trust me': " << dbg_sig2);
-    }
-    DEBUG_END */
+    auto result = MessageVerify(
+        "11canuhp9X2NocwCq7xNrQYTmUgZAnLK3",
+        "IIcaIENoYW5jZWxsb3Igb24gYnJpbmsgb2Ygc2Vjb25kIGJhaWxvdXQgZm9yIGJhbmtzIAaHRtbCeDZINyavx14=",
+        "Trust me");
+    
+    std::cout << "Result = " << static_cast<int>(result) << std::endl;
+    
+    BOOST_CHECK_EQUAL(result, MessageVerificationResult::OK);
 
     BOOST_CHECK_EQUAL(
         MessageVerify(
