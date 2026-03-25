@@ -229,7 +229,7 @@ class InvalidMessagesTest(BitcoinTestFramework):
                 '01' +       # network type (IPv4)
                 'fd0102' +   # address length (COMPACTSIZE(513))
                 'ab' * 513 + # address
-                '208d'))     # port
+                '66dd'))     # port
 
     def test_addrv2_unrecognized_network(self):
         now_hex = int(time.time()).to_bytes(4, "little").hex()
@@ -247,14 +247,14 @@ class InvalidMessagesTest(BitcoinTestFramework):
                 '99' +     # network type (unrecognized)
                 '02' +     # address length (COMPACTSIZE(2))
                 'ab' * 2 + # address
-                '208d' +   # port
+                '66dd' +   # port
                 # this should be added:
                 now_hex +  # time
                 '01' +     # service flags, COMPACTSIZE(NODE_NETWORK)
                 '01' +     # network type (IPv4)
                 '04' +     # address length (COMPACTSIZE(4))
                 '09' * 4 + # address
-                '208d'))   # port
+                '66dd'))   # port
 
     def test_oversized_msg(self, msg, size):
         msg_type = msg.msgtype.decode('ascii')
