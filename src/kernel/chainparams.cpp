@@ -126,10 +126,10 @@ public:
          * The characters are rarely used upper ASCII, not valid as UTF-8, and produce
          * a large 32-bit integer with any alignment.
          */
-        pchMessageStart[0] = 0xf9;
-        pchMessageStart[1] = 0xbe;
-        pchMessageStart[2] = 0xb4;
-        pchMessageStart[3] = 0xd9;
+        pchMessageStart[0] = 0xfe;
+        pchMessageStart[1] = 0xae;
+        pchMessageStart[2] = 0xd5;
+        pchMessageStart[3] = 0xca;
         nDefaultPort = 26333;
         nPruneAfterHeight = 100000;
         m_assumed_blockchain_size = 810;
@@ -240,10 +240,10 @@ public:
         consensus.nMinimumChainWork = uint256{"0000000000000000000000000000000000000000000016dd270dd94fac1d7632"};
         consensus.defaultAssumeValid = uint256{"0000000000000065c6c38258e201971a3fdfcc2ceee0dd6e85a6c022d45dee34"}; // 4550000
 
-        pchMessageStart[0] = 0x0b;
-        pchMessageStart[1] = 0x11;
-        pchMessageStart[2] = 0x09;
-        pchMessageStart[3] = 0x07;
+        pchMessageStart[0] = 0x1b;
+        pchMessageStart[1] = 0xcc;
+        pchMessageStart[2] = 0x08;
+        pchMessageStart[3] = 0x05;
         nDefaultPort = 18333;
         nPruneAfterHeight = 1000;
         m_assumed_blockchain_size = 240;
@@ -336,10 +336,10 @@ public:
         consensus.nMinimumChainWork = uint256{"00000000000000000000000000000000000000000000034a4690fe592dc49c7c"};
         consensus.defaultAssumeValid = uint256{"000000000000000180a58e7fa3b0db84b5ea76377524894f53660d93ac839d9b"}; // 91000
 
-        pchMessageStart[0] = 0x1c;
-        pchMessageStart[1] = 0x16;
-        pchMessageStart[2] = 0x3f;
-        pchMessageStart[3] = 0x28;
+        pchMessageStart[0] = 0x2c;
+        pchMessageStart[1] = 0x22;
+        pchMessageStart[2] = 0x3c;
+        pchMessageStart[3] = 0xad;
         nDefaultPort = 48333;
         nPruneAfterHeight = 1000;
         m_assumed_blockchain_size = 22;
@@ -552,10 +552,10 @@ public:
         consensus.nMinimumChainWork = uint256{};
         consensus.defaultAssumeValid = uint256{};
 
-        pchMessageStart[0] = 0xfa;
-        pchMessageStart[1] = 0xbf;
-        pchMessageStart[2] = 0xb5;
-        pchMessageStart[3] = 0xda;
+        pchMessageStart[0] = 0xea;
+        pchMessageStart[1] = 0xb1;
+        pchMessageStart[2] = 0xa5;
+        pchMessageStart[3] = 0xde;
         nDefaultPort = 18444;
         nPruneAfterHeight = opts.fastprune ? 100 : 1000;
         m_assumed_blockchain_size = 0;
