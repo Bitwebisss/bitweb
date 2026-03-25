@@ -480,12 +480,11 @@ class NetTest(BitcoinTestFramework):
         node.setmocktime(self.addr_time)
         seed_addrman(node)
 
-        # TEMPORARY: print real bucket positions, delete after hardcoding
-        raw = node.getrawaddrman()
-        for table_name in ["new", "tried"]:
-            for bp, entry in raw[table_name].items():
-                self.log.info(f"TABLE={table_name} addr={entry['address']} bucket_position={bp}")
-        # END TEMPORARY
+        # Temporary print real bucket positions
+        #raw = node.getrawaddrman()
+        #for table_name in ["new", "tried"]:
+        #    for bp, entry in raw[table_name].items():
+        #        self.log.info(f"TABLE={table_name} addr={entry['address']} bucket_position={bp}")
 
         self.log.debug("Test that getrawaddrman is a hidden RPC")
         # It is hidden from general help, but its detailed help may be called directly.
@@ -520,7 +519,7 @@ class NetTest(BitcoinTestFramework):
         expected = {
             "new": [
                     {
-                        "bucket_position": "82/8",
+                        "bucket_position": "82/42",
                         "address": "2.0.0.0",
                         "port": 26333,
                         "services": 9,
@@ -529,7 +528,7 @@ class NetTest(BitcoinTestFramework):
                         "source_network": "ipv4",
                     },
                     {
-                        "bucket_position": "336/24",
+                        "bucket_position": "336/44",
                         "address": "fc00:1:2:3:4:5:6:7",
                         "port": 26333,
                         "services": 9,
@@ -538,7 +537,7 @@ class NetTest(BitcoinTestFramework):
                         "source_network": "cjdns",
                     },
                     {
-                        "bucket_position": "963/46",
+                        "bucket_position": "963/11",
                         "address": "c4gfnttsuwqomiygupdqqqyy5y5emnk5c73hrfvatri67prd7vyq.b32.i2p",
                         "port": 26333,
                         "services": 9,
@@ -558,7 +557,7 @@ class NetTest(BitcoinTestFramework):
             ],
             "tried": [
                     {
-                        "bucket_position": "6/33",
+                        "bucket_position": "137/51",
                         "address": "1.2.3.4",
                         "port": 26333,
                         "services": 9,
@@ -567,7 +566,7 @@ class NetTest(BitcoinTestFramework):
                         "source_network": "ipv4",
                     },
                     {
-                        "bucket_position": "197/34",
+                        "bucket_position": "34/6",
                         "address": "1233:3432:2434:2343:3234:2345:6546:4534",
                         "port": 26333,
                         "services": 9,
@@ -576,7 +575,7 @@ class NetTest(BitcoinTestFramework):
                         "source_network": "ipv6",
                     },
                     {
-                        "bucket_position": "72/61",
+                        "bucket_position": "200/19",
                         "address": "pg6mmjiyjmcrsslvykfwnntlaru7p5svn6y2ymmju6nubxndf4pscryd.onion",
                         "port": 26333,
                         "services": 9,
