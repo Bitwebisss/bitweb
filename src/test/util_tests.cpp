@@ -1455,7 +1455,7 @@ BOOST_AUTO_TEST_CASE(message_sign)
         0xA3, 0x09, 0x84, 0x63, 0xC0, 0x03, 0x28, 0x66
     };
 
-    const std::string message = "Trust me";
+    const std::string message = "Trust no one";
 
     const std::string expected_signature =
         "ILd38Bd1cW/AgTI8Thgo4PA+8UWe3x8pO/OJdJ040Fj7XSuLCMhq8ajpV3yN4P7M/o8lQm9TcwcI2tmGIGDG++c=";
@@ -1526,8 +1526,8 @@ BOOST_AUTO_TEST_CASE(message_verify)
 
     BOOST_CHECK_EQUAL(
         MessageVerify(
-            "11canuhp9X2NocwCq7xNrQYTmUgZAnLK3",
-            "IIcaIENoYW5jZWxsb3Igb24gYnJpbmsgb2Ygc2Vjb25kIGJhaWxvdXQgZm9yIGJhbmtzIAaHRtbCeDZINyavx14=",
+            "15CRxFdyRpGZLW9w8HnHvVduizdL5jKNbs",
+            "IFpMkoWw9AQA8lx1ANJbY78pILfsA1wCuF35YYAG2j3WI4/JfYIwVF8h6EPND2taILjUDjvZjOeqKMaLB5dJq1k==",
             "Trust me"),
         MessageVerificationResult::OK);
 }
