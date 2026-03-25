@@ -84,9 +84,9 @@ TX_MIN_STANDARD_VERSION = 1
 TX_MAX_STANDARD_VERSION = 3
 
 MAGIC_BYTES = {
-    "mainnet": b"\xf9\xbe\xb4\xd9",
-    "testnet4": b"\x1c\x16\x3f\x28",
-    "regtest": b"\xfa\xbf\xb5\xda",
+    "mainnet": b"\xfe\xae\xd5\xca",
+    "testnet4": b"\x2c\x22\x3c\xad",
+    "regtest": b"\xea\xb1\xa5\xde",
     "signet": b"\x0a\x03\xcf\x40",
 }
 
