@@ -385,25 +385,25 @@ class NetTest(BitcoinTestFramework):
 
         self.log.debug("Test that adding an address, which collides with the address in tried table, fails")
 
-        # Find new colliding address
-        #self.log.debug("Grind a colliding address for the tried table")
-        #colliding_address = None
-        #addrman_before = node.getaddrmaninfo()
+        # Find new colliding address after default port was changed.
+        self.log.debug("Test that adding an address, which collides with the address in tried table, fails")
+        colliding_address = None
+        for third in range(256):
+            for fourth in range(256):
+                candidate = f"1.2.{third}.{fourth}"
+                if candidate in ("1.2.3.4", "1.0.0.0", "2.0.0.0"):
+                    continue
+                result = node.addpeeraddress(address=candidate, tried=True, port=26333)
+                if result == {"success": False, "error": "failed-adding-to-tried"}:
+                    colliding_address = candidate
+                    break
+            if colliding_address:
+                break
         
-        #for third in range(256):
-        #    for fourth in range(256):
-        #        candidate = f"1.2.{third}.{fourth}"
-        #        if candidate in ("1.2.3.4", "1.0.0.0", "2.0.0.0"):
-        #            continue
-        #        result = node.addpeeraddress(address=candidate, tried=True, port=26333)
-        #        if result == {"success": False, "error": "failed-adding-to-tried"}:
-        #            colliding_address = candidate
-        #            self.log.info(f"Found colliding address: {colliding_address}")
-        #            break
-        #    if colliding_address:
-        #        break
-        
-        #assert colliding_address is not None, "Could not find a colliding address"
+        assert colliding_address is not None, "Could not find a colliding address"
+        addrman_info = node.getaddrmaninfo()
+        assert_equal(addrman_info["all_networks"]["tried"], 1)
+        assert_equal(addrman_info["all_networks"]["new"], 2)
 
         colliding_address = "1.2.0.33"  # grinded address that produces a tried-table collision
         assert_equal(node.addpeeraddress(address=colliding_address, tried=True, port=26333), {"success": False, "error": "failed-adding-to-tried"})
