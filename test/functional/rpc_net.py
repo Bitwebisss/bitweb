@@ -386,7 +386,6 @@ class NetTest(BitcoinTestFramework):
         self.log.debug("Test that adding an address, which collides with the address in tried table, fails")
 
         # Find new colliding address after default port was changed.
-        self.log.debug("Test that adding an address, which collides with the address in tried table, fails")
         colliding_address = None
         for third in range(256):
             for fourth in range(256):
@@ -396,11 +395,13 @@ class NetTest(BitcoinTestFramework):
                 result = node.addpeeraddress(address=candidate, tried=True, port=26333)
                 if result == {"success": False, "error": "failed-adding-to-tried"}:
                     colliding_address = candidate
+                    self.log.info(f"Found colliding address: {colliding_address}")
                     break
             if colliding_address:
                 break
-        
         assert colliding_address is not None, "Could not find a colliding address"
+
+        assert_equal(node.addpeeraddress(address=colliding_address, tried=True, port=26333), {"success": False, "error": "failed-adding-to-tried"})
         addrman_info = node.getaddrmaninfo()
         assert_equal(addrman_info["all_networks"]["tried"], 1)
         assert_equal(addrman_info["all_networks"]["new"], 2)
