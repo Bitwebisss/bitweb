@@ -480,6 +480,13 @@ class NetTest(BitcoinTestFramework):
         node.setmocktime(self.addr_time)
         seed_addrman(node)
 
+        # TEMPORARY: print real bucket positions, delete after hardcoding
+        raw = node.getrawaddrman()
+        for table_name in ["new", "tried"]:
+            for bp, entry in raw[table_name].items():
+                self.log.info(f"TABLE={table_name} addr={entry['address']} bucket_position={bp}")
+        # END TEMPORARY
+
         self.log.debug("Test that getrawaddrman is a hidden RPC")
         # It is hidden from general help, but its detailed help may be called directly.
         assert "getrawaddrman" not in node.help()
