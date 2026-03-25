@@ -384,6 +384,27 @@ class NetTest(BitcoinTestFramework):
         assert_equal(len(node.getnodeaddresses(count=0)), 2)
 
         self.log.debug("Test that adding an address, which collides with the address in tried table, fails")
+
+        self.log.debug("Grind a colliding address for the tried table")
+        colliding_address = None
+        # Сохраняем состояние addrman перед гриндингом
+        addrman_before = node.getaddrmaninfo()
+        
+        for third in range(256):
+            for fourth in range(256):
+                candidate = f"1.2.{third}.{fourth}"
+                if candidate in ("1.2.3.4", "1.0.0.0", "2.0.0.0"):
+                    continue
+                result = node.addpeeraddress(address=candidate, tried=True, port=26333)
+                if result == {"success": False, "error": "failed-adding-to-tried"}:
+                    colliding_address = candidate
+                    self.log.info(f"Found colliding address: {colliding_address}")
+                    break
+            if colliding_address:
+                break
+        
+        assert colliding_address is not None, "Could not find a colliding address"
+
         colliding_address = "1.2.5.45"  # grinded address that produces a tried-table collision
         assert_equal(node.addpeeraddress(address=colliding_address, tried=True, port=26333), {"success": False, "error": "failed-adding-to-tried"})
         # When adding an address to the tried table, it's first added to the new table.
