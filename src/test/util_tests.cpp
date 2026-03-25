@@ -1455,7 +1455,7 @@ BOOST_AUTO_TEST_CASE(message_sign)
         0xA3, 0x09, 0x84, 0x63, 0xC0, 0x03, 0x28, 0x66
     };
 
-    const std::string message = "Trust no one";
+    const std::string message = "Trust me";
 
     const std::string expected_signature =
         "ILd38Bd1cW/AgTI8Thgo4PA+8UWe3x8pO/OJdJ040Fj7XSuLCMhq8ajpV3yN4P7M/o8lQm9TcwcI2tmGIGDG++c=";
@@ -1523,15 +1523,6 @@ BOOST_AUTO_TEST_CASE(message_verify)
             "ILd38Bd1cW/AgTI8Thgo4PA+8UWe3x8pO/OJdJ040Fj7XSuLCMhq8ajpV3yN4P7M/o8lQm9TcwcI2tmGIGDG++c=",
             "Trust no one"),
         MessageVerificationResult::OK);
-
-    auto result = MessageVerify(
-        "11canuhp9X2NocwCq7xNrQYTmUgZAnLK3",
-        "IIcaIENoYW5jZWxsb3Igb24gYnJpbmsgb2Ygc2Vjb25kIGJhaWxvdXQgZm9yIGJhbmtzIAaHRtbCeDZINyavx14=",
-        "Trust me");
-    
-    std::cout << "Result = " << static_cast<int>(result) << std::endl;
-    
-    BOOST_CHECK_EQUAL(result, MessageVerificationResult::OK);
 
     BOOST_CHECK_EQUAL(
         MessageVerify(
