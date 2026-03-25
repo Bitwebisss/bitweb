@@ -22,7 +22,7 @@ done
 The CPU miner is kept running as follows:
 
 ```sh
-./minerd -u ... -p ... -o http://127.0.0.1:8332 --no-stratum \
+./minerd -u ... -p ... -o http://127.0.0.1:26332 --no-stratum \
         --coinbase-addr 1NQpH6Nf8QtR2HphLRcvuVqfhXBXsiWn8r \
         --algo sha256d --no-longpoll --scantime 3 --retry-pause 1
 ```
