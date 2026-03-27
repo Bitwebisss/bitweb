@@ -17,7 +17,7 @@ static void Bech32Encode(benchmark::Bench& bench)
     tmp.reserve(1 + v.size() * 8 / 5);
     ConvertBits<8, 5, true>([&](unsigned char c) { tmp.push_back(c); }, v.begin(), v.end());
     bench.batch(v.size()).unit("byte").run([&] {
-        bech32::Encode(bech32::Encoding::BECH32, "bte", tmp);
+        bech32::Encode(bech32::Encoding::BECH32, "bc", tmp);
     });
 }
 
