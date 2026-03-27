@@ -136,7 +136,7 @@ def program_to_witness(version, program, main=False):
     assert 0 <= version <= 16
     assert 2 <= len(program) <= 40
     assert version > 0 or len(program) in [20, 32]
-    return encode_segwit_address("bc" if main else "bcrt", version, program)
+    return encode_segwit_address("bte" if main else "bcrt", version, program)
 
 def script_to_p2wsh(script, main=False):
     script = check_script(script)
@@ -175,7 +175,7 @@ def check_script(script):
 
 def bech32_to_bytes(address):
     hrp = address.split('1')[0]
-    if hrp not in ['bc', 'tb', 'bcrt']:
+    if hrp not in ['bte', 'tb', 'bcrt']:
         return (None, None)
     version, payload = decode_segwit_address(hrp, address)
     if version is None:
