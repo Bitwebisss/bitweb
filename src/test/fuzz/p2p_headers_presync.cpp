@@ -159,8 +159,9 @@ void initialize()
     static auto setup{
         MakeNoLogFileContext<HeadersSyncSetup>(ChainType::MAIN,
                                                {
-                                                   .setup_validation_interface = false,
                                                    .extra_args = {"-checkpoints=0"},  // Checkpoints restored
+                                                   .setup_validation_interface = false,
+                                                   
                                                }),
     };
     g_testing_setup = setup.get();
