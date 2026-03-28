@@ -4,15 +4,17 @@ Converts rpc_validateaddress.py test vectors to an arbitrary HRP.
 
 Usage:
     cd contrib/testgen
-    python3 gen_validateaddress_vectors.py > /tmp/vectors.py
 
-    Then paste INVALID_DATA and VALID_DATA from the output into:
-        test/functional/rpc_validateaddress.py
+    # Print generated blocks to stdout (inspect before applying):
+    python3 gen_validateaddress_vectors.py
+    python3 gen_validateaddress_vectors.py --hrp xbt
 
-    The script can also be run directly from test/functional/ — it locates
-    test_framework automatically in both cases.
+    # Apply directly to rpc_validateaddress.py (replaces INVALID_DATA and VALID_DATA in-place):
+    python3 gen_validateaddress_vectors.py --apply
+    python3 gen_validateaddress_vectors.py --hrp xbt --apply
 
-Output: ready-to-paste INVALID_DATA and VALID_DATA blocks for rpc_validateaddress.py.
+    The script can also be run from test/functional/ — it locates
+    test_framework and rpc_validateaddress.py automatically in both cases.
 
 ────────────────────────────────────────────────────────────────────────────────
 HOW IT WORKS
@@ -45,11 +47,13 @@ character lands at exactly the required position:
 
 import sys
 import os
+import re
+import argparse
 
 # Locate test_framework/segwit_addr.py regardless of where the script is invoked from.
 # Candidates are tried in order:
-#   1. contrib/testgen/ → ../../test/functional/test_framework  (primary location)
-#   2. test/functional/ → ./test_framework                      (fallback if run in-place)
+#   1. contrib/testgen/ -> ../../test/functional/test_framework  (primary location)
+#   2. test/functional/ -> ./test_framework                      (fallback if run in-place)
 _here = os.path.dirname(os.path.abspath(__file__))
 for _candidate in [
     os.path.join(_here, "..", "..", "test", "functional", "test_framework"),
@@ -60,14 +64,22 @@ for _candidate in [
         break
 else:
     sys.exit("ERROR: cannot locate test_framework/segwit_addr.py")
+
 from segwit_addr import bech32_encode, bech32_decode, Encoding
 
-# ── Configuration ────────────────────────────────────────────────────────────
-DST_HRP = "bte"   # target HRP (your fork's mainnet human-readable part)
-# ─────────────────────────────────────────────────────────────────────────────
+# Path to the target test file, resolved from either invocation location.
+# Candidates mirror the same logic as test_framework above.
+_TARGET_CANDIDATES = [
+    os.path.join(_here, "..", "..", "test", "functional", "rpc_validateaddress.py"),
+    os.path.join(_here, "rpc_validateaddress.py"),
+]
+
+DEFAULT_HRP = "bte"
 
 BECH32_CHARSET = "qpzry9x8gf2tvdw0s3jn54khce6mua7l"
 
+
+# ── Address helpers ───────────────────────────────────────────────────────────
 
 def reencode(addr: str, dst_hrp: str, force_upper: bool = False) -> str:
     """
@@ -108,10 +120,17 @@ def inject_invalid_char_at(addr: str, pos: int, char: str = "b") -> str:
     return "".join(chars)
 
 
-def main():
-    hrp = DST_HRP
+# ── Block generator ───────────────────────────────────────────────────────────
 
-    # ── Addresses with specific error_locations ───────────────────────────────
+def generate_blocks(hrp: str) -> str:
+    """
+    Generate INVALID_DATA and VALID_DATA Python source blocks for the given HRP.
+    Returns a single string ready to be printed or patched into the target file.
+    """
+    lines = []
+    w = lines.append  # shorthand
+
+    # ── Special addresses with error_locations ────────────────────────────────
 
     # [41] "Invalid Bech32 checksum"
     # Valid p2wpkh address for dst_hrp, 43 characters long.
@@ -133,218 +152,272 @@ def main():
     valid_p2tr = reencode("bc1p0xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqzk5jj0", hrp)
     bad_char_59 = inject_invalid_char_at(valid_p2tr, 59)
 
-    # ── Print INVALID_DATA ────────────────────────────────────────────────────
-    print("INVALID_DATA = [")
-    print("    # BIP 173")
+    # ── INVALID_DATA ──────────────────────────────────────────────────────────
 
-    rows = [
-        # tc1 addresses test wrong HRP rejection; leave them unchanged.
-        ("tc1qw508d6qejxtdg4y5r3zarvary0c5xw7kg3g4ty",
-         "Invalid or unsupported Segwit (Bech32) or Base58 encoding.",
-         "[]", "# Invalid hrp"),
+    w("INVALID_DATA = [")
+    w("    # BIP 173")
 
-        (bad_checksum_41,
-         "Invalid Bech32 checksum",
-         "[41]", ""),
-
-        (reencode("BC13W508D6QEJXTDG4Y5R3ZARVARY0C5XW7KN40WF2", hrp, force_upper=True),
-         "Version 1+ witness address must use Bech32m checksum",
-         "[]", ""),
-
-        (reencode("bc1rw5uspcuh", hrp),
-         "Version 1+ witness address must use Bech32m checksum",
-         "[]", "# Invalid program length"),
-
-        (reencode("bc10w508d6qejxtdg4y5r3zarvary0c5xw7kw508d6qejxtdg4y5r3zarvary0c5xw7kw5rljs90", hrp),
-         "Version 1+ witness address must use Bech32m checksum",
-         "[]", "# Invalid program length"),
-
-        (reencode("BC1QR508D6QEJXTDG4Y5R3ZARVARYV98GJ9P", hrp, force_upper=True),
-         "Invalid Bech32 v0 address program size (16 bytes), per BIP141",
-         "[]", ""),
-
-        # tc1 — wrong HRP + mixed case; leave unchanged.
-        ("tc1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3q0sL5k7",
-         "Invalid or unsupported Segwit (Bech32) or Base58 encoding.",
-         "[]", "# tb1, Mixed case"),
-
-        (mixed_case_40,
-         "Invalid character or mixed case",
-         "[40]", f"# {hrp}1, Mixed case, not in BIP 173 test vectors"),
-
-        (reencode("bc1zw508d6qejxtdg4y5r3zarvaryvqyzf3du", hrp),
-         "Version 1+ witness address must use Bech32m checksum",
-         "[]", "# Wrong padding"),
-
-        # tc1 — wrong HRP; leave unchanged.
-        ("tc1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3pjxtptv",
-         "Invalid or unsupported Segwit (Bech32) or Base58 encoding.",
-         "[]", "# tb1, Non-zero padding in 8-to-5 conversion"),
-
-        (reencode("bc1gmk9yu", hrp),
-         "Empty Bech32 data section",
-         "[]", ""),
-    ]
-
-    for addr, error, locs, comment in rows:
+    def row(addr, error, locs, comment=""):
         cmt = f"  {comment}" if comment else ""
         if locs == "[]":
-            print(f"    (")
-            print(f"        \"{addr}\",")
-            print(f"        \"{error}\",{cmt}")
-            print(f"        [],")
-            print(f"    ),")
+            w(f"    (")
+            w(f"        \"{addr}\",")
+            w(f"        \"{error}\",{cmt}")
+            w(f"        [],")
+            w(f"    ),")
         else:
-            print(f"    (\"{addr}\", \"{error}\", {locs}),{cmt}")
+            w(f"    (\"{addr}\", \"{error}\", {locs}),{cmt}")
 
-    print("    # BIP 350")
+    # tc1 addresses test wrong HRP rejection; leave them unchanged.
+    row("tc1qw508d6qejxtdg4y5r3zarvary0c5xw7kg3g4ty",
+        "Invalid or unsupported Segwit (Bech32) or Base58 encoding.",
+        "[]", "# Invalid hrp")
 
-    rows2 = [
-        # tc1 — wrong HRP; leave unchanged.
-        ("tc1p0xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vq5zuyut",
-         "Invalid or unsupported Segwit (Bech32) or Base58 encoding.",
-         "[]", "# Invalid human-readable part"),
+    row(bad_checksum_41, "Invalid Bech32 checksum", "[41]")
 
-        (reencode("bc1p0xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqh2y7hd", hrp),
-         "Version 1+ witness address must use Bech32m checksum",
-         "[]", "# Invalid checksum (Bech32 instead of Bech32m)"),
+    row(reencode("BC13W508D6QEJXTDG4Y5R3ZARVARY0C5XW7KN40WF2", hrp, force_upper=True),
+        "Version 1+ witness address must use Bech32m checksum", "[]")
 
-        # tc1 — wrong HRP; leave unchanged.
-        ("tc1z0xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqglt7rf",
-         "Invalid or unsupported Segwit (Bech32) or Base58 encoding.",
-         "[]", "# tb1, Invalid checksum (Bech32 instead of Bech32m)"),
+    row(reencode("bc1rw5uspcuh", hrp),
+        "Version 1+ witness address must use Bech32m checksum",
+        "[]", "# Invalid program length")
 
-        (reencode("BC1S0XLXVLHEMJA6C4DQV22UAPCTQUPFHLXM9H8Z3K2E72Q4K9HCZ7VQ54WELL", hrp, force_upper=True),
-         "Version 1+ witness address must use Bech32m checksum",
-         "[]", "# Invalid checksum (Bech32 instead of Bech32m)"),
+    row(reencode("bc10w508d6qejxtdg4y5r3zarvary0c5xw7kw508d6qejxtdg4y5r3zarvary0c5xw7kw5rljs90", hrp),
+        "Version 1+ witness address must use Bech32m checksum",
+        "[]", "# Invalid program length")
 
-        (reencode("bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kemeawh", hrp),
-         "Version 0 witness address must use Bech32 checksum",
-         "[]", "# Invalid checksum (Bech32m instead of Bech32)"),
+    row(reencode("BC1QR508D6QEJXTDG4Y5R3ZARVARYV98GJ9P", hrp, force_upper=True),
+        "Invalid Bech32 v0 address program size (16 bytes), per BIP141", "[]")
 
-        # tc1 — wrong HRP; leave unchanged.
-        ("tc1q0xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vq24jc47",
-         "Invalid or unsupported Segwit (Bech32) or Base58 encoding.",
-         "[]", "# tb1, Invalid checksum (Bech32m instead of Bech32)"),
+    # tc1 — wrong HRP + mixed case; leave unchanged.
+    row("tc1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3q0sL5k7",
+        "Invalid or unsupported Segwit (Bech32) or Base58 encoding.",
+        "[]", "# tb1, Mixed case")
 
-        (bad_char_59,
-         "Invalid Base 32 character",
-         "[59]", "# Invalid character in checksum"),
+    row(mixed_case_40, "Invalid character or mixed case",
+        "[40]", f"# {hrp}1, Mixed case, not in BIP 173 test vectors")
 
-        (reencode("BC130XLXVLHEMJA6C4DQV22UAPCTQUPFHLXM9H8Z3K2E72Q4K9HCZ7VQ7ZWS8R", hrp, force_upper=True),
-         "Invalid Bech32 address witness version",
-         "[]", ""),
+    row(reencode("bc1zw508d6qejxtdg4y5r3zarvaryvqyzf3du", hrp),
+        "Version 1+ witness address must use Bech32m checksum",
+        "[]", "# Wrong padding")
 
-        (reencode("bc1pw5dgrnzv", hrp),
-         "Invalid Bech32 address program size (1 byte)",
-         "[]", ""),
+    # tc1 — wrong HRP; leave unchanged.
+    row("tc1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3pjxtptv",
+        "Invalid or unsupported Segwit (Bech32) or Base58 encoding.",
+        "[]", "# tb1, Non-zero padding in 8-to-5 conversion")
 
-        (reencode("bc1p0xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7v8n0nx0muaewav253zgeav", hrp),
-         "Invalid Bech32 address program size (41 bytes)",
-         "[]", ""),
+    row(reencode("bc1gmk9yu", hrp), "Empty Bech32 data section", "[]")
 
-        (reencode("BC1QR508D6QEJXTDG4Y5R3ZARVARYV98GJ9P", hrp, force_upper=True),
-         "Invalid Bech32 v0 address program size (16 bytes), per BIP141",
-         "[]", ""),
+    w("    # BIP 350")
 
-        # tc1 — wrong HRP + mixed case; leave unchanged.
-        ("tc1p0xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vq47Zagq",
-         "Invalid or unsupported Segwit (Bech32) or Base58 encoding.",
-         "[]", "# tb1, Mixed case"),
+    # tc1 — wrong HRP; leave unchanged.
+    row("tc1p0xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vq5zuyut",
+        "Invalid or unsupported Segwit (Bech32) or Base58 encoding.",
+        "[]", "# Invalid human-readable part")
 
-        (reencode("bc1p0xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7v07qwwzcrf", hrp),
-         "Invalid padding in Bech32 data section",
-         "[]", "# zero padding of more than 4 bits"),
+    row(reencode("bc1p0xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqh2y7hd", hrp),
+        "Version 1+ witness address must use Bech32m checksum",
+        "[]", "# Invalid checksum (Bech32 instead of Bech32m)")
 
-        # tc1 — wrong HRP; leave unchanged.
-        ("tc1p0xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vpggkg4j",
-         "Invalid or unsupported Segwit (Bech32) or Base58 encoding.",
-         "[]", "# tb1, Non-zero padding in 8-to-5 conversion"),
+    # tc1 — wrong HRP; leave unchanged.
+    row("tc1z0xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqglt7rf",
+        "Invalid or unsupported Segwit (Bech32) or Base58 encoding.",
+        "[]", "# tb1, Invalid checksum (Bech32 instead of Bech32m)")
 
-        (reencode("bc1gmk9yu", hrp),
-         "Empty Bech32 data section",
-         "[]", ""),
-    ]
+    row(reencode("BC1S0XLXVLHEMJA6C4DQV22UAPCTQUPFHLXM9H8Z3K2E72Q4K9HCZ7VQ54WELL", hrp, force_upper=True),
+        "Version 1+ witness address must use Bech32m checksum",
+        "[]", "# Invalid checksum (Bech32 instead of Bech32m)")
 
-    for addr, error, locs, comment in rows2:
-        cmt = f"  {comment}" if comment else ""
-        if locs == "[]":
-            print(f"    (")
-            print(f"        \"{addr}\",")
-            print(f"        \"{error}\",{cmt}")
-            print(f"        [],")
-            print(f"    ),")
-        else:
-            print(f"    (\"{addr}\", \"{error}\", {locs}),{cmt}")
+    row(reencode("bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kemeawh", hrp),
+        "Version 0 witness address must use Bech32 checksum",
+        "[]", "# Invalid checksum (Bech32m instead of Bech32)")
 
-    print("]")
+    # tc1 — wrong HRP; leave unchanged.
+    row("tc1q0xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vq24jc47",
+        "Invalid or unsupported Segwit (Bech32) or Base58 encoding.",
+        "[]", "# tb1, Invalid checksum (Bech32m instead of Bech32)")
 
-    # ── Print VALID_DATA ──────────────────────────────────────────────────────
-    print()
-    print("VALID_DATA = [")
-    print("    # BIP 350")
+    row(bad_char_59, "Invalid Base 32 character",
+        "[59]", "# Invalid character in checksum")
 
-    # Each entry: (bc_addr, scriptPubKey, force_upper, pre_comment, post_comment)
-    # pre_comment  — printed as a block comment before the entry (e.g. commented-out tb1 equivalent)
-    # post_comment — printed as inline comment on the closing line
-    valid = [
-        ("BC1QW508D6QEJXTDG4Y5R3ZARVARY0C5XW7KV8F3T4",
-         "0014751e76e8199196d454941c45d1b3a323f1433bd6", True,
-         None, None),
+    row(reencode("BC130XLXVLHEMJA6C4DQV22UAPCTQUPFHLXM9H8Z3K2E72Q4K9HCZ7VQ7ZWS8R", hrp, force_upper=True),
+        "Invalid Bech32 address witness version", "[]")
 
-        # The tb1 variant is commented out in the original — preserve that block.
-        ("bc1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3qccfmv3",
-         "00201863143c14c5166804bd19203356da136c985678cd4d27a1b8c6329604903262", False,
-         "    # (\n"
-         "    #   \"tb1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3q0sl5k7\",\n"
-         "    #   \"00201863143c14c5166804bd19203356da136c985678cd4d27a1b8c6329604903262\",\n"
-         "    # )",
-         None),
+    row(reencode("bc1pw5dgrnzv", hrp),
+        "Invalid Bech32 address program size (1 byte)", "[]")
 
-        ("bc1pw508d6qejxtdg4y5r3zarvary0c5xw7kw508d6qejxtdg4y5r3zarvary0c5xw7kt5nd6y",
-         "5128751e76e8199196d454941c45d1b3a323f1433bd6751e76e8199196d454941c45d1b3a323f1433bd6", False,
-         None, None),
+    row(reencode("bc1p0xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7v8n0nx0muaewav253zgeav", hrp),
+        "Invalid Bech32 address program size (41 bytes)", "[]")
 
-        ("BC1SW50QGDZ25J", "6002751e", True, None, None),
+    row(reencode("BC1QR508D6QEJXTDG4Y5R3ZARVARYV98GJ9P", hrp, force_upper=True),
+        "Invalid Bech32 v0 address program size (16 bytes), per BIP141", "[]")
 
-        ("bc1zw508d6qejxtdg4y5r3zarvaryvaxxpcs",
-         "5210751e76e8199196d454941c45d1b3a323", False, None, None),
+    # tc1 — wrong HRP + mixed case; leave unchanged.
+    row("tc1p0xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vq47Zagq",
+        "Invalid or unsupported Segwit (Bech32) or Base58 encoding.",
+        "[]", "# tb1, Mixed case")
 
-        ("bc1qqqqqp399et2xygdj5xreqhjjvcmzhxw4aywxecjdzew6hylgvses5wp4dt",
-         "0020000000c4a5cad46221b2a187905e5266362b99d5e91c6ce24d165dab93e86433", False,
-         "    # (\n"
-         "    #   \"tb1qqqqqp399et2xygdj5xreqhjjvcmzhxw4aywxecjdzew6hylgvsesrxh6hy\",\n"
-         "    #   \"0020000000c4a5cad46221b2a187905e5266362b99d5e91c6ce24d165dab93e86433\",\n"
-         "    # )",
-         None),
+    row(reencode("bc1p0xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7v07qwwzcrf", hrp),
+        "Invalid padding in Bech32 data section",
+        "[]", "# zero padding of more than 4 bits")
 
-        ("bc1pqqqqp399et2xygdj5xreqhjjvcmzhxw4aywxecjdzew6hylgvses7epu4h",
-         "5120000000c4a5cad46221b2a187905e5266362b99d5e91c6ce24d165dab93e86433", False,
-         "    # (\n"
-         "    #   \"tb1pqqqqp399et2xygdj5xreqhjjvcmzhxw4aywxecjdzew6hylgvsesf3hn0c\",\n"
-         "    #   \"5120000000c4a5cad46221b2a187905e5266362b99d5e91c6ce24d165dab93e86433\",\n"
-         "    # )",
-         None),
+    # tc1 — wrong HRP; leave unchanged.
+    row("tc1p0xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vpggkg4j",
+        "Invalid or unsupported Segwit (Bech32) or Base58 encoding.",
+        "[]", "# tb1, Non-zero padding in 8-to-5 conversion")
 
-        ("bc1p0xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqzk5jj0",
-         "512079be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798", False,
-         None, None),
+    row(reencode("bc1gmk9yu", hrp), "Empty Bech32 data section", "[]")
 
-        # PayToAnchor (P2A)
-        ("bc1pfeessrawgf", "51024e73", False,
-         "    # PayToAnchor(P2A)", None),
-    ]
+    w("]")
 
-    for orig, spk, upper, pre_comment, _post in valid:
+    # ── VALID_DATA ────────────────────────────────────────────────────────────
+
+    w("VALID_DATA = [")
+    w("    # BIP 350")
+
+    def valid_entry(bc_addr, spk, force_upper=False, pre_comment=None):
         if pre_comment:
-            print(pre_comment)
-        new = reencode(orig, hrp, force_upper=upper)
-        print(f"    (")
-        print(f"        \"{new}\",")
-        print(f"        \"{spk}\",")
-        print(f"    ),")
+            w(pre_comment)
+        new = reencode(bc_addr, hrp, force_upper=force_upper)
+        w(f"    (")
+        w(f"        \"{new}\",")
+        w(f"        \"{spk}\",")
+        w(f"    ),")
 
-    print("]")
+    valid_entry("BC1QW508D6QEJXTDG4Y5R3ZARVARY0C5XW7KV8F3T4",
+                "0014751e76e8199196d454941c45d1b3a323f1433bd6",
+                force_upper=True)
+
+    # The tb1 variant is commented out in the original — preserve that block.
+    valid_entry("bc1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3qccfmv3",
+                "00201863143c14c5166804bd19203356da136c985678cd4d27a1b8c6329604903262",
+                pre_comment=(
+                    "    # (\n"
+                    "    #   \"tb1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3q0sl5k7\",\n"
+                    "    #   \"00201863143c14c5166804bd19203356da136c985678cd4d27a1b8c6329604903262\",\n"
+                    "    # )"
+                ))
+
+    valid_entry("bc1pw508d6qejxtdg4y5r3zarvary0c5xw7kw508d6qejxtdg4y5r3zarvary0c5xw7kt5nd6y",
+                "5128751e76e8199196d454941c45d1b3a323f1433bd6751e76e8199196d454941c45d1b3a323f1433bd6")
+
+    valid_entry("BC1SW50QGDZ25J", "6002751e", force_upper=True)
+
+    valid_entry("bc1zw508d6qejxtdg4y5r3zarvaryvaxxpcs",
+                "5210751e76e8199196d454941c45d1b3a323")
+
+    valid_entry("bc1qqqqqp399et2xygdj5xreqhjjvcmzhxw4aywxecjdzew6hylgvses5wp4dt",
+                "0020000000c4a5cad46221b2a187905e5266362b99d5e91c6ce24d165dab93e86433",
+                pre_comment=(
+                    "    # (\n"
+                    "    #   \"tb1qqqqqp399et2xygdj5xreqhjjvcmzhxw4aywxecjdzew6hylgvsesrxh6hy\",\n"
+                    "    #   \"0020000000c4a5cad46221b2a187905e5266362b99d5e91c6ce24d165dab93e86433\",\n"
+                    "    # )"
+                ))
+
+    valid_entry("bc1pqqqqp399et2xygdj5xreqhjjvcmzhxw4aywxecjdzew6hylgvses7epu4h",
+                "5120000000c4a5cad46221b2a187905e5266362b99d5e91c6ce24d165dab93e86433",
+                pre_comment=(
+                    "    # (\n"
+                    "    #   \"tb1pqqqqp399et2xygdj5xreqhjjvcmzhxw4aywxecjdzew6hylgvsesf3hn0c\",\n"
+                    "    #   \"5120000000c4a5cad46221b2a187905e5266362b99d5e91c6ce24d165dab93e86433\",\n"
+                    "    # )"
+                ))
+
+    valid_entry("bc1p0xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqzk5jj0",
+                "512079be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798")
+
+    # PayToAnchor (P2A)
+    valid_entry("bc1pfeessrawgf", "51024e73",
+                pre_comment="    # PayToAnchor(P2A)")
+
+    w("]")
+
+    return "\n".join(lines) + "\n"
+
+
+# ── In-place patch ────────────────────────────────────────────────────────────
+
+def find_target_file() -> str:
+    """Return the path to rpc_validateaddress.py, or exit with an error."""
+    for path in _TARGET_CANDIDATES:
+        if os.path.isfile(path):
+            return os.path.abspath(path)
+    sys.exit(
+        "ERROR: cannot locate rpc_validateaddress.py\n"
+        "Expected at: " + " or ".join(_TARGET_CANDIDATES)
+    )
+
+
+def apply_to_file(hrp: str) -> None:
+    """
+    Replace the INVALID_DATA and VALID_DATA blocks inside rpc_validateaddress.py.
+
+    The replacement uses a regex that matches from the variable assignment line
+    (e.g. 'INVALID_DATA = [') to the first ']' that appears alone on a line,
+    which is the closing bracket of the top-level list.
+    """
+    target = find_target_file()
+    new_blocks = generate_blocks(hrp)
+
+    with open(target, "r", encoding="utf-8") as f:
+        source = f.read()
+
+    # Match each top-level list assignment from its opening line to the
+    # closing ']' on its own line (non-greedy to avoid eating both blocks at once).
+    pattern = re.compile(
+        r"^(INVALID_DATA|VALID_DATA)\s*=\s*\[.*?^\]",
+        re.MULTILINE | re.DOTALL,
+    )
+
+    matches = pattern.findall(source)
+    if len(matches) != 2:
+        sys.exit(
+            f"ERROR: expected 2 replaceable blocks in {target}, found {len(matches)}.\n"
+            "Make sure INVALID_DATA and VALID_DATA are top-level list assignments."
+        )
+
+    patched = pattern.sub("__BLOCK__", source, count=2)
+
+    # Insert both new blocks where the placeholders are.
+    # generate_blocks() returns them concatenated; split on the blank line between them.
+    invalid_block, valid_block = new_blocks.split("\nVALID_DATA", 1)
+    valid_block = "VALID_DATA" + valid_block
+
+    patched = patched.replace("__BLOCK__", invalid_block.rstrip("\n"), 1)
+    patched = patched.replace("__BLOCK__", valid_block.rstrip("\n"), 1)
+
+    with open(target, "w", encoding="utf-8") as f:
+        f.write(patched)
+
+    print(f"Patched: {target}  (HRP={hrp})")
+
+
+# ── Entry point ───────────────────────────────────────────────────────────────
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Generate rpc_validateaddress.py test vectors for a given HRP."
+    )
+    parser.add_argument(
+        "--hrp",
+        default=DEFAULT_HRP,
+        help=f"Target bech32 HRP (default: {DEFAULT_HRP})",
+    )
+    parser.add_argument(
+        "--apply",
+        action="store_true",
+        help="Patch rpc_validateaddress.py in-place instead of printing to stdout.",
+    )
+    return parser.parse_args()
+
+
+def main():
+    args = parse_args()
+    if args.apply:
+        apply_to_file(args.hrp)
+    else:
+        print(generate_blocks(args.hrp), end="")
 
 
 if __name__ == "__main__":
