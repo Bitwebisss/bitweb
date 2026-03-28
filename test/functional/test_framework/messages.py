@@ -85,6 +85,7 @@ TX_MAX_STANDARD_VERSION = 3
 
 MAGIC_BYTES = {
     "mainnet": b"\xfe\xae\xd5\xca",
+    "testnet3": b"\x1b\xcc\x08\x05", # // Checkpoints restored
     "testnet4": b"\x2c\x22\x3c\xad",
     "regtest": b"\xea\xb1\xa5\xde",
     "signet": b"\x0a\x03\xcf\x40",
