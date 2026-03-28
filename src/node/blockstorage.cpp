@@ -41,6 +41,7 @@
 #include <cstddef>
 #include <map>
 #include <optional>
+#include <ranges> // Checkpoints restored
 #include <unordered_map>
 
 namespace kernel {
@@ -577,6 +578,22 @@ void BlockManager::ScanAndUnlinkAlreadyPrunedFiles()
 
     UnlinkPrunedFiles(block_files_to_prune);
 }
+
+// Checkpoints restored
+const CBlockIndex* BlockManager::GetLastCheckpoint(const CCheckpointData& data)
+{
+    const MapCheckpoints& checkpoints = data.mapCheckpoints;
+
+    for (const MapCheckpoints::value_type& i : checkpoints | std::views::reverse) {
+        const uint256& hash = i.second;
+        const CBlockIndex* pindex = LookupBlockIndex(hash);
+        if (pindex) {
+            return pindex;
+        }
+    }
+    return nullptr;
+}
+// Checkpoints restored
 
 bool BlockManager::IsBlockPruned(const CBlockIndex& block) const
 {
