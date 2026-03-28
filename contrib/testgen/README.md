@@ -13,16 +13,18 @@ Regenerates INVALID_DATA and VALID_DATA test vectors in
 test/functional/rpc_validateaddress.py for an arbitrary bech32 HRP.
 
     # Print generated blocks to stdout (inspect before applying):
+	chmod +x gen_validateaddress_vectors.py
     ./gen_validateaddress_vectors.py
-    ./gen_validateaddress_vectors.py --hrp xbt
+    ./gen_validateaddress_vectors.py --hrp bte
 
     # Patch rpc_validateaddress.py in-place (recommended):
+	chmod +x gen_validateaddress_vectors.py
     ./gen_validateaddress_vectors.py --apply
-    ./gen_validateaddress_vectors.py --hrp xbt --apply
+    ./gen_validateaddress_vectors.py --hrp bte --apply
 
-cmake -B build -DBUILD_DAEMON=ON -DBUILD_CLI=ON -DBUILD_TX=ON -DBUILD_TESTS=ON -DENABLE_WALLET=ON -DWITH_ZMQ=ON -DWITH_USDT=ON -DENABLE_EXTERNAL_SIGNER=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo
-cmake --build build -j$(nproc)
+### regenerate_test_data.py ###
+Regenerates bitweb-tx utility test data (.hex / .json).
+Requires a built binary (cmake --build build -j$(nproc)).
 
-cd build
-cp bin/bitweb-tx test/functional/data/util/bitweb-tx
-python3 test/functional/data/util/regenerate_test_data.py
+    cd contrib/testgen
+    python3 regenerate_test_data.py
