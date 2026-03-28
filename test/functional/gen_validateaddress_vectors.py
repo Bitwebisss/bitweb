@@ -279,7 +279,7 @@ def main():
          "    # (\n"
          "    #   \"tb1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3q0sl5k7\",\n"
          "    #   \"00201863143c14c5166804bd19203356da136c985678cd4d27a1b8c6329604903262\",\n"
-         "    # )",
+         "    # ),",
          None),
 
         ("bc1pw508d6qejxtdg4y5r3zarvary0c5xw7kw508d6qejxtdg4y5r3zarvary0c5xw7kt5nd6y",
@@ -296,7 +296,7 @@ def main():
          "    # (\n"
          "    #   \"tb1qqqqqp399et2xygdj5xreqhjjvcmzhxw4aywxecjdzew6hylgvsesrxh6hy\",\n"
          "    #   \"0020000000c4a5cad46221b2a187905e5266362b99d5e91c6ce24d165dab93e86433\",\n"
-         "    # )",
+         "    # ),",
          None),
 
         ("bc1pqqqqp399et2xygdj5xreqhjjvcmzhxw4aywxecjdzew6hylgvses7epu4h",
@@ -304,7 +304,7 @@ def main():
          "    # (\n"
          "    #   \"tb1pqqqqp399et2xygdj5xreqhjjvcmzhxw4aywxecjdzew6hylgvsesf3hn0c\",\n"
          "    #   \"5120000000c4a5cad46221b2a187905e5266362b99d5e91c6ce24d165dab93e86433\",\n"
-         "    # )",
+         "    # ),",
          None),
 
         ("bc1p0xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqzk5jj0",
