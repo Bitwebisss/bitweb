@@ -131,9 +131,6 @@ def main():
 
         # Write the output directly into the data/util/ directory.
         output = result.stdout
-        # Strip trailing newline from raw hex files so comparisons work cleanly.
-        if output_file.endswith(".hex"):
-            output = output.rstrip(b"\r\n")
 
         with open(output_path, "wb") as fh:
             fh.write(output)
