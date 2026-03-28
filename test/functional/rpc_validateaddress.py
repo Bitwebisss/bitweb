@@ -41,11 +41,7 @@ INVALID_DATA = [
         "Invalid or unsupported Segwit (Bech32) or Base58 encoding.",  # tb1, Mixed case
         [],
     ),
-    (
-        "BTE1QW508D6QEJXTDG4Y5R3ZARVARY0C5XW7KX8JnPE",
-        "Invalid character or mixed case",  # bte1, Mixed case, not in BIP 173 test vectors
-        [40],
-    ),
+    ("BTE1QW508D6QEJXTDG4Y5R3ZARVARY0C5XW7KX8JnPE", "Invalid character or mixed case", [40]),  # bte1, Mixed case, not in BIP 173 test vectors
     (
         "bte1zw508d6qejxtdg4y5r3zarvaryvq596up0",
         "Version 1+ witness address must use Bech32m checksum",  # Wrong padding
@@ -56,7 +52,11 @@ INVALID_DATA = [
         "Invalid or unsupported Segwit (Bech32) or Base58 encoding.",  # tb1, Non-zero padding in 8-to-5 conversion
         [],
     ),
-    ("bte15zawvr", "Empty Bech32 data section", []),
+    (
+        "bte15zawvr",
+        "Empty Bech32 data section",
+        [],
+    ),
     # BIP 350
     (
         "tc1p0xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vq5zuyut",
@@ -88,17 +88,17 @@ INVALID_DATA = [
         "Invalid or unsupported Segwit (Bech32) or Base58 encoding.",  # tb1, Invalid checksum (Bech32m instead of Bech32)
         [],
     ),
-    (
-        "bte1p0xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqw8b5rn",
-        "Invalid Base 32 character",  # Invalid character in checksum
-        [59],
-    ),
+    ("bte1p0xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqw8b5rn", "Invalid Base 32 character", [59]),  # Invalid character in checksum
     (
         "BTE130XLXVLHEMJA6C4DQV22UAPCTQUPFHLXM9H8Z3K2E72Q4K9HCZ7VQJNLKKL",
         "Invalid Bech32 address witness version",
         [],
     ),
-    ("bte1pw5dqdpge", "Invalid Bech32 address program size (1 byte)", []),
+    (
+        "bte1pw5dqdpge",
+        "Invalid Bech32 address program size (1 byte)",
+        [],
+    ),
     (
         "bte1p0xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7v8n0nx0muaewav255sfp7g",
         "Invalid Bech32 address program size (41 bytes)",
@@ -124,8 +124,13 @@ INVALID_DATA = [
         "Invalid or unsupported Segwit (Bech32) or Base58 encoding.",  # tb1, Non-zero padding in 8-to-5 conversion
         [],
     ),
-    ("bte15zawvr", "Empty Bech32 data section", []),
+    (
+        "bte15zawvr",
+        "Empty Bech32 data section",
+        [],
+    ),
 ]
+
 VALID_DATA = [
     # BIP 350
     (
@@ -144,8 +149,14 @@ VALID_DATA = [
         "bte1pw508d6qejxtdg4y5r3zarvary0c5xw7kw508d6qejxtdg4y5r3zarvary0c5xw7k9qyker",
         "5128751e76e8199196d454941c45d1b3a323f1433bd6751e76e8199196d454941c45d1b3a323f1433bd6",
     ),
-    ("BTE1SW50QCTVN20", "6002751e"),
-    ("bte1zw508d6qejxtdg4y5r3zarvaryvdrq6df", "5210751e76e8199196d454941c45d1b3a323"),
+    (
+        "BTE1SW50QCTVN20",
+        "6002751e",
+    ),
+    (
+        "bte1zw508d6qejxtdg4y5r3zarvaryvdrq6df",
+        "5210751e76e8199196d454941c45d1b3a323",
+    ),
     # (
     #   "tb1qqqqqp399et2xygdj5xreqhjjvcmzhxw4aywxecjdzew6hylgvsesrxh6hy",
     #   "0020000000c4a5cad46221b2a187905e5266362b99d5e91c6ce24d165dab93e86433",
