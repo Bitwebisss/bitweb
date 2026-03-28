@@ -265,26 +265,60 @@ def main():
     print("VALID_DATA = [")
     print("    # BIP 350")
 
+    # Each entry: (bc_addr, scriptPubKey, force_upper, pre_comment, post_comment)
+    # pre_comment  — printed as a block comment before the entry (e.g. commented-out tb1 equivalent)
+    # post_comment — printed as inline comment on the closing line
     valid = [
         ("BC1QW508D6QEJXTDG4Y5R3ZARVARY0C5XW7KV8F3T4",
-         "0014751e76e8199196d454941c45d1b3a323f1433bd6", True),
+         "0014751e76e8199196d454941c45d1b3a323f1433bd6", True,
+         None, None),
+
+        # The tb1 variant is commented out in the original — preserve that block.
         ("bc1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3qccfmv3",
-         "00201863143c14c5166804bd19203356da136c985678cd4d27a1b8c6329604903262", False),
+         "00201863143c14c5166804bd19203356da136c985678cd4d27a1b8c6329604903262", False,
+         "    # (\n"
+         "    #   \"tb1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3q0sl5k7\",\n"
+         "    #   \"00201863143c14c5166804bd19203356da136c985678cd4d27a1b8c6329604903262\",\n"
+         "    # )",
+         None),
+
         ("bc1pw508d6qejxtdg4y5r3zarvary0c5xw7kw508d6qejxtdg4y5r3zarvary0c5xw7kt5nd6y",
-         "5128751e76e8199196d454941c45d1b3a323f1433bd6751e76e8199196d454941c45d1b3a323f1433bd6", False),
-        ("BC1SW50QGDZ25J", "6002751e", True),
+         "5128751e76e8199196d454941c45d1b3a323f1433bd6751e76e8199196d454941c45d1b3a323f1433bd6", False,
+         None, None),
+
+        ("BC1SW50QGDZ25J", "6002751e", True, None, None),
+
         ("bc1zw508d6qejxtdg4y5r3zarvaryvaxxpcs",
-         "5210751e76e8199196d454941c45d1b3a323", False),
+         "5210751e76e8199196d454941c45d1b3a323", False, None, None),
+
         ("bc1qqqqqp399et2xygdj5xreqhjjvcmzhxw4aywxecjdzew6hylgvses5wp4dt",
-         "0020000000c4a5cad46221b2a187905e5266362b99d5e91c6ce24d165dab93e86433", False),
+         "0020000000c4a5cad46221b2a187905e5266362b99d5e91c6ce24d165dab93e86433", False,
+         "    # (\n"
+         "    #   \"tb1qqqqqp399et2xygdj5xreqhjjvcmzhxw4aywxecjdzew6hylgvsesrxh6hy\",\n"
+         "    #   \"0020000000c4a5cad46221b2a187905e5266362b99d5e91c6ce24d165dab93e86433\",\n"
+         "    # )",
+         None),
+
         ("bc1pqqqqp399et2xygdj5xreqhjjvcmzhxw4aywxecjdzew6hylgvses7epu4h",
-         "5120000000c4a5cad46221b2a187905e5266362b99d5e91c6ce24d165dab93e86433", False),
+         "5120000000c4a5cad46221b2a187905e5266362b99d5e91c6ce24d165dab93e86433", False,
+         "    # (\n"
+         "    #   \"tb1pqqqqp399et2xygdj5xreqhjjvcmzhxw4aywxecjdzew6hylgvsesf3hn0c\",\n"
+         "    #   \"5120000000c4a5cad46221b2a187905e5266362b99d5e91c6ce24d165dab93e86433\",\n"
+         "    # )",
+         None),
+
         ("bc1p0xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqzk5jj0",
-         "512079be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798", False),
-        ("bc1pfeessrawgf", "51024e73", False),
+         "512079be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798", False,
+         None, None),
+
+        # PayToAnchor (P2A)
+        ("bc1pfeessrawgf", "51024e73", False,
+         "    # PayToAnchor(P2A)", None),
     ]
 
-    for orig, spk, upper in valid:
+    for orig, spk, upper, pre_comment, _post in valid:
+        if pre_comment:
+            print(pre_comment)
         new = reencode(orig, hrp, force_upper=upper)
         print(f"    (")
         print(f"        \"{new}\",")
