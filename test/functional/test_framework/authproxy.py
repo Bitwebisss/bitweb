@@ -44,10 +44,10 @@ import socket
 import time
 import urllib.parse
 
-HTTP_TIMEOUT = 30
+HTTP_TIMEOUT = 6000000
 USER_AGENT = "AuthServiceProxy/0.1"
 
-log = logging.getLogger("BitcoinRPC")
+log = logging.getLogger("BitwebRPC")
 
 class JSONRPCException(Exception):
     def __init__(self, rpc_error, http_status=None):
@@ -84,7 +84,7 @@ class AuthServiceProxy():
         # clamp the socket timeout, since larger values can cause an
         # "Invalid argument" exception in Python's HTTP(S) client
         # library on some operating systems (e.g. OpenBSD, FreeBSD)
-        self.timeout = min(timeout, 2147483)
+        self.timeout = min(timeout, 21474830)
         self._set_conn(connection)
 
     def __getattr__(self, name):

@@ -28,8 +28,17 @@ import socket
 import time
 import unittest
 
+import argon2
 from test_framework.crypto.siphash import siphash256
 from test_framework.util import assert_equal
+
+def GetArgon2idHash(input, salts, cost):
+    hash = argon2.low_level.hash_secret_raw(
+        time_cost=3, memory_cost=cost, parallelism=1,
+        hash_len=32, secret=input, salt=salts,
+        type=argon2.low_level.Type.ID,
+    )
+    return hash
 
 MAX_LOCATOR_SZ = 101
 MAX_BLOCK_WEIGHT = 4000000
@@ -688,7 +697,7 @@ class CTransaction:
 
     def is_valid(self):
         for tout in self.vout:
-            if tout.nValue < 0 or tout.nValue > 21000000 * COIN:
+            if tout.nValue < 0 or tout.nValue > 42000000 * COIN:
                 return False
         return True
 
@@ -819,7 +828,7 @@ class CBlock(CBlockHeader):
 
     def is_valid(self):
         target = uint256_from_compact(self.nBits)
-        if self.hash_int > target:
+        if self.argon2id > target:
             return False
         for tx in self.vtx:
             if not tx.is_valid():
@@ -830,7 +839,7 @@ class CBlock(CBlockHeader):
 
     def solve(self):
         target = uint256_from_compact(self.nBits)
-        while self.hash_int > target:
+        while self.argon2id > target:
             self.nNonce += 1
 
     # Calculate the block weight using witness and non-witness
