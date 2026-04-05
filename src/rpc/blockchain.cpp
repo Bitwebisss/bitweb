@@ -571,7 +571,7 @@ static RPCHelpMan getblockhash()
     };
 }
 
-/* Bitweb Params */
+/* Bitweb Params
 static RPCHelpMan getargon2idpowblockhash()
 {
     return RPCHelpMan{"getargon2idpowblockhash",
@@ -600,7 +600,7 @@ static RPCHelpMan getargon2idpowblockhash()
 },
     };
 }
-/* Bitweb Params */
+Bitweb Params */
 
 static RPCHelpMan getblockheader()
 {
@@ -3507,7 +3507,7 @@ void RegisterBlockchainRPCCommands(CRPCTable& t)
         {"blockchain", &getblock},
         {"blockchain", &getblockfrompeer},
         {"blockchain", &getblockhash},
-        {"blockchain", &getargon2idpowblockhash}, /* Bitweb Params */
+//        {"blockchain", &getargon2idpowblockhash}, /* Bitweb Params */
         {"blockchain", &getblockheader},
         {"blockchain", &getchaintips},
         {"blockchain", &getdifficulty},
