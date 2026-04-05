@@ -5227,8 +5227,13 @@ void PeerManagerImpl::CheckForStaleTipAndEvictPeers()
         // Check whether our tip is stale, and if so, allow using an extra
         // outbound peer
         if (!m_chainman.m_blockman.LoadingBlocks() && m_connman.GetNetworkActive() && m_connman.GetUseAddrmanOutgoing() && TipMayBeStale()) {
-            LogPrintf("Potential stale tip detected, will try using extra outbound peer (last tip update: %d seconds ago)\n",
-                      count_seconds(now - m_last_tip_update.load()));
+            /* Bitweb Params */
+            // We do not need spam about stale tip at initial sync
+            if (!m_chainman.IsInitialBlockDownload()) {
+                LogPrintf("Potential stale tip detected, will try using extra outbound peer (last tip update: %d seconds ago)\n",
+                          count_seconds(now - m_last_tip_update.load()));
+            }
+            /* Bitweb Params */
             m_connman.SetTryNewOutboundPeer(true);
         } else if (m_connman.GetTryNewOutboundPeer()) {
             m_connman.SetTryNewOutboundPeer(false);

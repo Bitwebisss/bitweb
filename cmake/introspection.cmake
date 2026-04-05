@@ -210,4 +210,35 @@ if(NOT MSVC)
     " HAVE_ARM_SHANI
     CXXFLAGS ${ARM_SHANI_CXXFLAGS}
   )
+
+  # Check for Argon2 AVX2 intrinsics.
+  set(ARGON2_AVX2_CXXFLAGS -mavx2)
+  check_cxx_source_compiles_with_flags("
+    #include <stdint.h>
+    #include <immintrin.h>
+
+    int main()
+    {
+      __m256i l = _mm256_set1_epi32(0);
+      return 0;
+    }
+    " HAVE_ARGON2_AVX2
+    CXXFLAGS ${ARGON2_AVX2_CXXFLAGS}
+  )
+
+  # Check for Argon2 AVX512F intrinsics.
+  set(ARGON2_AVX512F_CXXFLAGS -mavx512f)
+  check_cxx_source_compiles_with_flags("
+    #include <stdint.h>
+    #include <immintrin.h>
+
+    int main()
+    {
+      __m512i v = _mm512_set1_epi32(0);
+      return 0;
+    }
+    " HAVE_ARGON2_AVX512
+    CXXFLAGS ${ARGON2_AVX512F_CXXFLAGS}
+  )
+
 endif()
