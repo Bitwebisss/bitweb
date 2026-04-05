@@ -61,7 +61,7 @@ struct BIP9Deployment {
      * Examples: 1916 for 95%, 1512 for testchains.
 	 * Bitweb use 1 Month period in 5 Minute blocks  
      */
-    uint32_t threshold{3628}; /* Bitweb Param */
+    uint32_t threshold{3628}; /* Bitweb Params */
 
     /** Constant for nTimeout very far in the future. */
     static constexpr int64_t NO_TIMEOUT = std::numeric_limits<int64_t>::max();
@@ -119,6 +119,8 @@ struct Params {
     bool fPowNoRetargeting;
     int64_t nPowTargetSpacing;
     int64_t nPowTargetTimespan;
+    /**LWMA3 diff algo Bitweb Params */
+    int64_t lwmaAveragingWindow;
     std::chrono::seconds PowTargetSpacing() const
     {
         return std::chrono::seconds{nPowTargetSpacing};
