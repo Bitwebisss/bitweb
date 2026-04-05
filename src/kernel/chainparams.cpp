@@ -337,13 +337,13 @@ public:
         genesis = CreateGenesisBlock(testnet4_genesis_msg,
                 testnet4_genesis_script,
                 1775389222,
-                1538,
+                2113,
                 0x1f0fffff,
                 1,
                 50 * COIN);
         consensus.hashGenesisBlock = genesis.GetHash();
-        assert(consensus.hashGenesisBlock == uint256{"7a7283af4042d0e76d9bfde16f509148bee2c3b9b1b7471e6c1afe3957124cac"});
-        assert(genesis.hashMerkleRoot == uint256{"c43eb73d9c47aaadb8af4efd2cd56f62d1a56f33f5fb437e5992d78da7248aae"});
+        assert(consensus.hashGenesisBlock == uint256{"4fdb9fcaf92a62128a983f0c51e26cabc5f9e6fcc978425c5eaed18caec78935"});
+        assert(genesis.hashMerkleRoot == uint256{"1bc1e445152a842ad5437d2800898ef1fc5a8eab0b82927c68d47301bebf2151"});
 
         vFixedSeeds.clear();
         vSeeds.clear();
