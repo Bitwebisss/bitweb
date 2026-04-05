@@ -12,7 +12,6 @@
 #include <hash.h>
 #include <streams.h>
 #include <tinyformat.h>
-#include <node/protocol_version.h>
 
 uint256 CBlockHeader::GetHash() const
 {
@@ -47,7 +46,7 @@ uint256 CBlockHeader::GetArgon2idPoWHash() const
 
     // Serialize the block header (80 bytes: version, hashPrevBlock,
     // hashMerkleRoot, nTime, nBits, nNonce).
-    CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
+    DataStream ss{};
     ss << *this;
 
     // Compute Argon2id hash. The serialized header serves as both the
