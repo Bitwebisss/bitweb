@@ -717,12 +717,14 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
         }
 
         {
+			block.nNonce = 0;
             // A block template does not have proof-of-work, but it might pass
             // verification by coincidence. Grind the nonce if needed:
             while (CheckProofOfWork(block.GetArgon2idPoWHash(), block.nBits, Assert(m_node.chainman)->GetParams().GetConsensus())) {
-                block.nNonce++;
+            //    block.nNonce++;
+			      ++block.nNonce;
             }
-
+            printf("{%u, %u},\n", bi.extranonce, block.nNonce);
             std::string reason;
             std::string debug;
             BOOST_REQUIRE(!mining->checkBlock(block, {.check_pow = true}, reason, debug));
