@@ -575,7 +575,7 @@ static RPCHelpMan getblockhash()
 static RPCHelpMan getargon2idpowblockhash()
 {
     return RPCHelpMan{"getargon2idpowblockhash",
-                "\nReturns argon2id hash of block in best-block-chain at height provided.\n",
+                "Returns argon2id hash of block in best-block-chain at height provided.\n",
                 {
                     {"height", RPCArg::Type::NUM, RPCArg::Optional::NO, "The height index"},
                 },
