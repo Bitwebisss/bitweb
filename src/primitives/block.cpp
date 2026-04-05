@@ -12,7 +12,7 @@
 #include <hash.h>
 #include <streams.h>
 #include <tinyformat.h>
-#include <version.h>
+#include <node/protocol_version.h>
 
 uint256 CBlockHeader::GetHash() const
 {
