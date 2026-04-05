@@ -768,8 +768,8 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
             block.nNonce = bi.nonce;
             while (!CheckProofOfWork(block.GetArgon2idPoWHash(), block.nBits, Assert(m_node.chainman)->GetParams().GetConsensus())) {
                 ++block.nNonce;
-            fprintf(stderr, "{%u, %u},\n", bi.extranonce, block.nNonce);
             }
+			fprintf(stderr, "{%u, %u},\n", bi.extranonce, block.nNonce);
         }
         std::shared_ptr<const CBlock> shared_pblock = std::make_shared<const CBlock>(block);
         // Alternate calls between Chainman's ProcessNewBlock and submitSolution
