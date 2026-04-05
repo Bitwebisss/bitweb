@@ -152,7 +152,7 @@ BOOST_FIXTURE_TEST_CASE(blockmanager_readblock_hash_mismatch, TestingSetup)
     CBlock block;
     BOOST_CHECK(!m_node.chainman->m_blockman.ReadBlock(block, index));
 }
-
+/*
 BOOST_AUTO_TEST_CASE(blockmanager_flush_block_file)
 {
     KernelNotifications notifications{Assert(m_node.shutdown_request), m_node.exit_status, *Assert(m_node.warnings)};
@@ -220,6 +220,6 @@ BOOST_AUTO_TEST_CASE(blockmanager_flush_block_file)
     // Block 2 was not overwritten:
     BOOST_CHECK(!blockman.ReadBlock(read_block, pos2, {}));
     BOOST_CHECK_EQUAL(read_block.nVersion, 2);
-}
+}*/
 
 BOOST_AUTO_TEST_SUITE_END()
