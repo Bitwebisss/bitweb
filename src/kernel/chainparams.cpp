@@ -622,9 +622,9 @@ public:
             consensus.vDeployments[deployment_pos].min_activation_height = version_bits_params.min_activation_height;
         }
 
-        genesis = CreateGenesisBlock(1296688603, 2, 0x207fffff, 1, 50 * COIN);
+        genesis = CreateGenesisBlock(1775499129, 2, 0x207fffff, 1, 50 * COIN);
         consensus.hashGenesisBlock = genesis.GetHash();
-        assert(consensus.hashGenesisBlock == uint256{"54b52b50dc4891ebb11c7a660441027f3e72e0d6bb687b0df107cf95dc87522b"});
+        assert(consensus.hashGenesisBlock == uint256{"1e462151956c79eed187f7eec80fdbed42278e1e1c53c980763f198bf16795a3"});
         assert(genesis.hashMerkleRoot == uint256{"4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b"});
 
         vFixedSeeds.clear(); //!< Regtest mode doesn't have any fixed seeds.
@@ -637,7 +637,7 @@ public:
         // Checkpoints restored
         checkpointData = {
             {
-                {0, uint256{"54b52b50dc4891ebb11c7a660441027f3e72e0d6bb687b0df107cf95dc87522b"}},
+                {0, uint256{"1e462151956c79eed187f7eec80fdbed42278e1e1c53c980763f198bf16795a3"}},
             }
         };
         // Checkpoints restored
