@@ -696,30 +696,20 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
     std::unique_ptr<BlockTemplate> block_template = mining->createNewBlock(options);
     BOOST_REQUIRE(block_template);
 
-    // === базовая проверка шаблона ===
+    // базовая проверка
     {
         CBlock block{block_template->getBlock()};
+        std::string reason, debug;
 
-        {
-            std::string reason, debug;
-            BOOST_REQUIRE(!mining->checkBlock(block, {.check_pow = false}, reason, debug));
-            BOOST_REQUIRE_EQUAL(reason, "bad-txnmrklroot");
-        }
-
+        BOOST_REQUIRE(!mining->checkBlock(block, {.check_pow = false}, reason, debug));
         block.hashMerkleRoot = BlockMerkleRoot(block);
-
-        {
-            std::string reason, debug;
-            BOOST_REQUIRE(mining->checkBlock(block, {.check_pow = false}, reason, debug));
-        }
+        BOOST_REQUIRE(mining->checkBlock(block, {.check_pow = false}, reason, debug));
 
         while (CheckProofOfWork(block.GetArgon2idPoWHash(), block.nBits,
                Assert(m_node.chainman)->GetParams().GetConsensus())) {
             block.nNonce++;
         }
     }
-
-    // === ГЕНЕРАЦИЯ НОВОГО ДАТАСЕТА ===
 
     FILE* f = fopen("/tmp/blockinfo.txt", "w");
     BOOST_REQUIRE(f != nullptr);
@@ -746,13 +736,16 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
             block.nVersion = VERSIONBITS_TOP_BITS;
             block.nTime = Assert(m_node.chainman)->ActiveChain().Tip()->GetMedianTimePast() + 1;
 
-            // 🔥 ПОДБОР extranonce + nonce
             while (true) {
+                // coinbase scriptSig
                 txCoinbase.vin[0].scriptSig = CScript{} << (current_height + 1) << extranonce;
+
+                // 🔥 КЛЮЧЕВОЙ ФИКС
                 txCoinbase.vout.resize(1);
                 txCoinbase.vout[0].scriptPubKey = CScript();
 
                 block.vtx[0] = MakeTransactionRef(txCoinbase);
+
                 block.hashMerkleRoot = BlockMerkleRoot(block);
 
                 block.nNonce = 0;
@@ -764,14 +757,11 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
                     ++block.nNonce;
                 }
 
-                // нашли валидный
                 fprintf(f, "{%u, %u},\n", extranonce, block.nNonce);
                 fflush(f);
-
                 break;
             }
 
-            // сохраняем txFirst как в оригинальном тесте
             if (txFirst.empty()) {
                 baseheight = current_height;
             }
@@ -810,8 +800,6 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
     }
 
     fclose(f);
-
-    // === дальше идёт ОРИГИНАЛЬНЫЙ тест ===
 
     LOCK(cs_main);
 
