@@ -14,7 +14,7 @@ purposes. As such, there are repository maintainers who are responsible for
 merging pull requests, the [release cycle](/doc/release-process.md), and
 moderation.
 
-Getting Started
+Getting Started1
 ---------------
 
 New contributors are very welcome and needed.
