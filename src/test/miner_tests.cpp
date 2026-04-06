@@ -520,7 +520,7 @@ void MinerTestingSetup::TestBasicMining(const CScript& scriptPubKey, const std::
     BOOST_CHECK(CheckFinalTxAtTip(*Assert(m_node.chainman->ActiveChain().Tip()), CTransaction{tx})); // Locktime passes
     BOOST_CHECK(!TestSequenceLocks(CTransaction{tx}, tx_mempool)); // Sequence locks fail
 
-    const int SEQUENCE_LOCK_TIME = 1024; // Sequence locks pass 512 seconds later
+    const int SEQUENCE_LOCK_TIME = 512; // Sequence locks pass 512 seconds later
     for (int i = 0; i < CBlockIndex::nMedianTimeSpan; ++i)
         m_node.chainman->ActiveChain().Tip()->GetAncestor(m_node.chainman->ActiveChain().Tip()->nHeight - i)->nTime += SEQUENCE_LOCK_TIME; // Trick the MedianTimePast
     {
@@ -736,6 +736,10 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
     static_assert(std::size(BLOCKINFO) == 110, "Should have 110 blocks to import");
     int baseheight = 0;
     std::vector<CTransactionRef> txFirst;
+
+    FILE* f = fopen("/tmp/blockinfo.txt", "w");
+    BOOST_REQUIRE(f != nullptr);
+
     for (const auto& bi : BLOCKINFO) {
         const int current_height{mining->getTip()->height};
 
@@ -754,27 +758,32 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
         {
             LOCK(cs_main);
             block.nVersion = VERSIONBITS_TOP_BITS;
-            block.nTime = Assert(m_node.chainman)->ActiveChain().Tip()->GetMedianTimePast()+1;
+            block.nTime = Assert(m_node.chainman)->ActiveChain().Tip()->GetMedianTimePast() + 1;
+
             txCoinbase.version = 1;
             txCoinbase.vin[0].scriptSig = CScript{} << (current_height + 1) << bi.extranonce;
             txCoinbase.vout.resize(1); // Ignore the (optional) segwit commitment added by CreateNewBlock (as the hardcoded nonces don't account for this)
             txCoinbase.vout[0].scriptPubKey = CScript();
             block.vtx[0] = MakeTransactionRef(txCoinbase);
-            if (txFirst.size() == 0)
+
+            if (txFirst.empty()) {
                 baseheight = current_height;
-            if (txFirst.size() < 4)
+            }
+            if (txFirst.size() < 4) {
                 txFirst.push_back(block.vtx[0]);
+            }
+
             block.hashMerkleRoot = BlockMerkleRoot(block);
-            block.nNonce = bi.nonce;
-            /*
+
+            block.nNonce = 0;
             while (!CheckProofOfWork(block.GetArgon2idPoWHash(), block.nBits, Assert(m_node.chainman)->GetParams().GetConsensus())) {
                 ++block.nNonce;
             }
-            FILE* f = fopen("/tmp/blockinfo.txt", "a");
+
             fprintf(f, "{%u, %u},\n", bi.extranonce, block.nNonce);
-            fclose(f);
-            */			
+            fflush(f);
         }
+
         std::shared_ptr<const CBlock> shared_pblock = std::make_shared<const CBlock>(block);
         // Alternate calls between Chainman's ProcessNewBlock and submitSolution
         // via the Mining interface. The former is used by net_processing as well
@@ -799,6 +808,8 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
             mining->waitTipChanged(block.hashPrevBlock);
         }
     }
+
+    fclose(f);
 
     LOCK(cs_main);
 
