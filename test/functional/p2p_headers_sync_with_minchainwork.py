@@ -79,7 +79,7 @@ class RejectLowDifficultyHeadersTest(BitcoinTestFramework):
             assert len(chaintips) == 1
             assert {
                 'height': 0,
-                'hash': '1e462151956c79eed187f7eec80fdbed42278e1e1c53c980763f198bf16795a3',
+                'hash': '79ef95239891bb86a972e505c09e556e0623ae0ce18f76f809e729a1d5ee1923',
                 'branchlen': 0,
                 'status': 'active',
             } in chaintips
@@ -91,7 +91,7 @@ class RejectLowDifficultyHeadersTest(BitcoinTestFramework):
 
         assert {
             'height': 0,
-            'hash': '1e462151956c79eed187f7eec80fdbed42278e1e1c53c980763f198bf16795a3',
+            'hash': '79ef95239891bb86a972e505c09e556e0623ae0ce18f76f809e729a1d5ee1923',
             'branchlen': 0,
             'status': 'active',
         } in self.nodes[2].getchaintips()
