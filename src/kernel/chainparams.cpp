@@ -622,9 +622,10 @@ public:
             consensus.vDeployments[deployment_pos].min_activation_height = version_bits_params.min_activation_height;
         }
 
-        genesis = CreateGenesisBlock(1775396459, 0, 0x207fffff, 1, 50 * COIN);
+        // It's important for the tests to work correctly that the genesis value in the reg test is old, then we take it back 2 months from the mainnet date.
+        genesis = CreateGenesisBlock(1770409902, 0, 0x207fffff, 1, 50 * COIN);
         consensus.hashGenesisBlock = genesis.GetHash();
-        assert(consensus.hashGenesisBlock == uint256{"1e462151956c79eed187f7eec80fdbed42278e1e1c53c980763f198bf16795a3"});
+        assert(consensus.hashGenesisBlock == uint256{"79ef95239891bb86a972e505c09e556e0623ae0ce18f76f809e729a1d5ee1923"});
         assert(genesis.hashMerkleRoot == uint256{"4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b"});
 
         vFixedSeeds.clear(); //!< Regtest mode doesn't have any fixed seeds.
@@ -637,7 +638,7 @@ public:
         // Checkpoints restored
         checkpointData = {
             {
-                {0, uint256{"1e462151956c79eed187f7eec80fdbed42278e1e1c53c980763f198bf16795a3"}},
+                {0, uint256{"79ef95239891bb86a972e505c09e556e0623ae0ce18f76f809e729a1d5ee1923"}},
             }
         };
         // Checkpoints restored
