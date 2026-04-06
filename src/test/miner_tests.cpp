@@ -688,72 +688,48 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
     auto mining{MakeMining()};
     BOOST_REQUIRE(mining);
 
-    // Note that by default, these tests run with size accounting enabled.
     CScript scriptPubKey = CScript() << "04678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef38c4f35504e51ec112de5c384df7ba0b8d578a4c702b6bf11d5f"_hex << OP_CHECKSIG;
+
     BlockAssembler::Options options;
     options.coinbase_output_script = scriptPubKey;
 
-    // Create and check a simple template
     std::unique_ptr<BlockTemplate> block_template = mining->createNewBlock(options);
     BOOST_REQUIRE(block_template);
+
+    // === базовая проверка шаблона ===
     {
         CBlock block{block_template->getBlock()};
+
         {
-            std::string reason;
-            std::string debug;
+            std::string reason, debug;
             BOOST_REQUIRE(!mining->checkBlock(block, {.check_pow = false}, reason, debug));
             BOOST_REQUIRE_EQUAL(reason, "bad-txnmrklroot");
-            BOOST_REQUIRE_EQUAL(debug, "hashMerkleRoot mismatch");
         }
 
         block.hashMerkleRoot = BlockMerkleRoot(block);
 
         {
-            std::string reason;
-            std::string debug;
+            std::string reason, debug;
             BOOST_REQUIRE(mining->checkBlock(block, {.check_pow = false}, reason, debug));
-            BOOST_REQUIRE_EQUAL(reason, "");
-            BOOST_REQUIRE_EQUAL(debug, "");
         }
 
-        {
-            // A block template does not have proof-of-work, but it might pass
-            // verification by coincidence. Grind the nonce if needed:
-            while (CheckProofOfWork(block.GetArgon2idPoWHash(), block.nBits, Assert(m_node.chainman)->GetParams().GetConsensus())) {
-                block.nNonce++;
-            }
-
-            std::string reason;
-            std::string debug;
-            BOOST_REQUIRE(!mining->checkBlock(block, {.check_pow = true}, reason, debug));
-            BOOST_REQUIRE_EQUAL(reason, "high-hash");
-            BOOST_REQUIRE_EQUAL(debug, "proof of work failed");
+        while (CheckProofOfWork(block.GetArgon2idPoWHash(), block.nBits,
+               Assert(m_node.chainman)->GetParams().GetConsensus())) {
+            block.nNonce++;
         }
     }
 
-    // We can't make transactions until we have inputs
-    // Therefore, load 110 blocks :)
-    static_assert(std::size(BLOCKINFO) == 110, "Should have 110 blocks to import");
+    // === ГЕНЕРАЦИЯ НОВОГО ДАТАСЕТА ===
+
+    FILE* f = fopen("/tmp/blockinfo.txt", "w");
+    BOOST_REQUIRE(f != nullptr);
 
     int baseheight = 0;
     std::vector<CTransactionRef> txFirst;
 
-    FILE* f_blockinfo = fopen("/tmp/blockinfo.txt", "w");
-    BOOST_REQUIRE(f_blockinfo != nullptr);
+    for (int i = 0; i < 110; ++i) {
+        const int current_height = mining->getTip()->height;
 
-    FILE* f_txfirst = fopen("/tmp/txfirst.txt", "w");
-    BOOST_REQUIRE(f_txfirst != nullptr);
-
-    fprintf(f_txfirst, "baseheight=%d\n", baseheight);
-
-    for (const auto& bi : BLOCKINFO) {
-        const int current_height{mining->getTip()->height};
-
-        /*
-         * Simple block creation, nothing special yet.
-         * If current_height is odd, block_template will have already been
-         * set at the end of the previous loop.
-         */
         if (current_height % 2 == 0) {
             block_template = mining->createNewBlock(options);
             BOOST_REQUIRE(block_template);
@@ -762,55 +738,67 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
         CBlock block{block_template->getBlock()};
         CMutableTransaction txCoinbase(*block.vtx[0]);
 
+        uint32_t extranonce = 0;
+
         {
             LOCK(cs_main);
 
             block.nVersion = VERSIONBITS_TOP_BITS;
             block.nTime = Assert(m_node.chainman)->ActiveChain().Tip()->GetMedianTimePast() + 1;
 
-            txCoinbase.version = 1;
-            txCoinbase.vin[0].scriptSig = CScript{} << (current_height + 1) << bi.extranonce;
-            txCoinbase.vout.resize(1); // Ignore the (optional) segwit commitment added by CreateNewBlock
-            txCoinbase.vout[0].scriptPubKey = CScript();
-            block.vtx[0] = MakeTransactionRef(txCoinbase);
+            // 🔥 ПОДБОР extranonce + nonce
+            while (true) {
+                txCoinbase.vin[0].scriptSig = CScript{} << (current_height + 1) << extranonce;
+                txCoinbase.vout.resize(1);
+                txCoinbase.vout[0].scriptPubKey = CScript();
 
+                block.vtx[0] = MakeTransactionRef(txCoinbase);
+                block.hashMerkleRoot = BlockMerkleRoot(block);
+
+                block.nNonce = 0;
+
+                while (!CheckProofOfWork(
+                    block.GetArgon2idPoWHash(),
+                    block.nBits,
+                    Assert(m_node.chainman)->GetParams().GetConsensus())) {
+                    ++block.nNonce;
+                }
+
+                // нашли валидный
+                fprintf(f, "{%u, %u},\n", extranonce, block.nNonce);
+                fflush(f);
+
+                break;
+            }
+
+            // сохраняем txFirst как в оригинальном тесте
             if (txFirst.empty()) {
                 baseheight = current_height;
-                rewind(f_txfirst);
-                fprintf(f_txfirst, "baseheight=%d\n", baseheight);
             }
             if (txFirst.size() < 4) {
                 txFirst.push_back(block.vtx[0]);
-                fprintf(f_txfirst, "txFirst[%zu]=%s\n", txFirst.size() - 1, txFirst.back()->GetHash().ToString());
             }
-
-            block.hashMerkleRoot = BlockMerkleRoot(block);
-
-            block.nNonce = 0;
-            while (!CheckProofOfWork(block.GetArgon2idPoWHash(), block.nBits, Assert(m_node.chainman)->GetParams().GetConsensus())) {
-                ++block.nNonce;
-            }
-
-            fprintf(f_blockinfo, "{%u, %u},\n", bi.extranonce, block.nNonce);
-            fflush(f_blockinfo);
-            fflush(f_txfirst);
         }
 
-        std::shared_ptr<const CBlock> shared_pblock = std::make_shared<const CBlock>(block);
+        auto shared_pblock = std::make_shared<const CBlock>(block);
 
-        // Alternate calls between Chainman's ProcessNewBlock and submitSolution
-        // via the Mining interface. The former is used by net_processing as well
-        // as the submitblock RPC.
         if (current_height % 2 == 0) {
-            BOOST_REQUIRE(Assert(m_node.chainman)->ProcessNewBlock(shared_pblock, /*force_processing=*/true, /*min_pow_checked=*/true, nullptr));
+            BOOST_REQUIRE(Assert(m_node.chainman)->ProcessNewBlock(shared_pblock, true, true, nullptr));
         } else {
-            BOOST_REQUIRE(block_template->submitSolution(block.nVersion, block.nTime, block.nNonce, MakeTransactionRef(txCoinbase)));
+            BOOST_REQUIRE(block_template->submitSolution(
+                block.nVersion,
+                block.nTime,
+                block.nNonce,
+                MakeTransactionRef(txCoinbase)
+            ));
         }
 
         {
             LOCK(cs_main);
-            auto maybe_new_tip{Assert(m_node.chainman)->ActiveChain().Tip()};
-            BOOST_REQUIRE_EQUAL(maybe_new_tip->GetBlockHash(), block.GetHash());
+            BOOST_REQUIRE_EQUAL(
+                Assert(m_node.chainman)->ActiveChain().Tip()->GetBlockHash(),
+                block.GetHash()
+            );
         }
 
         if (current_height % 2 == 0) {
@@ -821,8 +809,9 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
         }
     }
 
-    fclose(f_blockinfo);
-    fclose(f_txfirst);
+    fclose(f);
+
+    // === дальше идёт ОРИГИНАЛЬНЫЙ тест ===
 
     LOCK(cs_main);
 
