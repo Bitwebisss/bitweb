@@ -622,7 +622,7 @@ public:
             consensus.vDeployments[deployment_pos].min_activation_height = version_bits_params.min_activation_height;
         }
 
-        genesis = CreateGenesisBlock(1775499129, 2, 0x207fffff, 1, 50 * COIN);
+        genesis = CreateGenesisBlock(1775396459, 0, 0x207fffff, 1, 50 * COIN);
         consensus.hashGenesisBlock = genesis.GetHash();
         assert(consensus.hashGenesisBlock == uint256{"1e462151956c79eed187f7eec80fdbed42278e1e1c53c980763f198bf16795a3"});
         assert(genesis.hashMerkleRoot == uint256{"4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b"});
