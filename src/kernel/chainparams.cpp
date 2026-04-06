@@ -593,12 +593,6 @@ public:
         // Checkpoints restored
 
         m_assumeutxo_data = {
-            {   // For use by unit tests
-                .height = 110,
-                .hash_serialized = AssumeutxoHash{uint256{"cc98df1776653cee5667027ad0ca33e6036902c9a0756807d59526e8d5a97cac"}},
-                .m_chain_tx_count = 111,
-                .blockhash = uint256{"1d41cddd2315e4dec2773f9da6ce41ea4a3673c10803abccbcabb415e0de302b"},
-            },
         };
 
         chainTxData = ChainTxData{
