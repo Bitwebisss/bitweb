@@ -378,12 +378,12 @@ TestChain100Setup::TestChain100Setup(
     // Generate a 100-block chain:
     this->mineBlocks(COINBASE_MATURITY);
 
-//    {
-//        LOCK(::cs_main);
-//        assert(
-//            m_node.chainman->ActiveChain().Tip()->GetBlockHash().ToString() ==
-//            "0c8c5f79505775a0f6aed6aca2350718ceb9c6f2c878667864d5c7a6d8ffa2a6");
-//    }
+    {
+        LOCK(::cs_main);
+        assert(
+            m_node.chainman->ActiveChain().Tip()->GetBlockHash().ToString() ==
+            "0f7126573b5009c23932bc32e670c4e383c5fa3b992cc3709b1220e6b9ef72e8");
+    }
 }
 
 void TestChain100Setup::mineBlocks(int num_blocks)
