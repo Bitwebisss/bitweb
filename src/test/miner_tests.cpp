@@ -74,25 +74,25 @@ static CFeeRate blockMinFeeRate = CFeeRate(DEFAULT_BLOCK_MIN_TX_FEE);
 constexpr static struct {
     unsigned int extranonce;
     unsigned int nonce;
-} BLOCKINFO[]{{0, 3552706918},   {500, 37506755},   {1000, 948987788}, {400, 524762339},  {800, 258510074},  {300, 102309278},
-              {1300, 54365202},  {600, 1107740426}, {1000, 203094491}, {900, 391178848},  {800, 381177271},  {600, 87188412},
-              {0, 66522866},     {800, 874942736},  {1000, 89200838},  {400, 312638088},  {400, 66263693},   {500, 924648304},
-              {400, 369913599},  {500, 47630099},   {500, 115045364},  {100, 277026602},  {1100, 809621409}, {700, 155345322},
-              {800, 943579953},  {400, 28200730},   {900, 77200495},   {0, 105935488},    {400, 698721821},  {500, 111098863},
-              {1300, 445389594}, {500, 621849894},  {1400, 56010046},  {1100, 370669776}, {1200, 380301940}, {1200, 110654905},
-              {400, 213771024},  {1500, 120014726}, {1200, 835019014}, {1500, 624817237}, {900, 1404297},    {400, 189414558},
-              {400, 293178348},  {1100, 15393789},  {600, 396764180},  {800, 1387046371}, {800, 199368303},  {700, 111496662},
-              {100, 129759616},  {200, 536577982},  {500, 125881300},  {500, 101053391},  {1200, 471590548}, {900, 86957729},
-              {1200, 179604104}, {600, 68658642},   {1000, 203295701}, {500, 139615361},  {900, 233693412},  {300, 153225163},
-              {0, 27616254},     {1200, 9856191},   {100, 220392722},  {200, 66257599},   {1100, 145489641}, {1300, 37859442},
-              {400, 5816075},    {1200, 215752117}, {1400, 32361482},  {1400, 6529223},   {500, 143332977},  {800, 878392},
-              {700, 159290408},  {400, 123197595},  {700, 43988693},   {300, 304224916},  {700, 214771621},  {1100, 274148273},
-              {400, 285632418},  {1100, 923451065}, {600, 12818092},   {1200, 736282054}, {1000, 246683167}, {600, 92950402},
-              {1400, 29223405},  {1000, 841327192}, {700, 174301283},  {1400, 214009854}, {1000, 6989517},   {1200, 278226956},
-              {700, 540219613},  {400, 93663104},   {1100, 152345635}, {1500, 464194499}, {1300, 333850111}, {600, 258311263},
-              {600, 90173162},   {1000, 33590797},  {1500, 332866027}, {100, 204704427},  {1000, 463153545}, {800, 303244785},
-              {600, 88096214},   {0, 137477892},    {1200, 195514506}, {300, 704114595},  {900, 292087369},  {1400, 758684870},
-              {1300, 163493028}, {1200, 53151293}};
+} BLOCKINFO[]{{0, 6318},   {0, 9272},  {0, 842},   {0, 3346},  {0, 1202},   {0, 3421},
+              {0, 3776},   {0, 2260},  {0, 2594},  {0, 3081},  {0, 172},    {0, 3090},
+              {0, 5652},   {0, 2108},  {0, 691},   {0, 616},   {0, 7364},   {0, 716},
+              {0, 82},     {0, 1714},  {0, 290},   {0, 500},   {0, 1343},   {0, 138},
+              {0, 4759},   {0, 3101},  {0, 56},    {0, 6267},  {0, 5097},   {0, 3733},
+              {0, 10602},  {0, 520},   {0, 1893},  {0, 1528},  {0, 647},    {0, 955},
+              {0, 3461},   {0, 4112},  {0, 398},   {0, 3040},  {0, 1808},   {0, 747},
+              {0, 11442},  {0, 661},   {0, 1113},  {0, 693},   {0, 119},    {0, 2634},
+              {0, 618},    {0, 581},   {0, 6646},  {0, 6240},  {0, 615},    {0, 773},
+              {0, 1933},   {0, 1136},  {0, 5832},  {0, 6870},  {0, 8930},   {0, 5245},
+              {0, 727},    {0, 16139}, {0, 7588},  {0, 195},   {0, 3572},   {0, 1960},
+              {0, 519},    {0, 14098}, {0, 38},    {0, 742},   {0, 13598},  {0, 535},
+              {0, 4091},   {0, 4842},  {0, 3149},  {0, 7120},  {0, 6937},   {0, 169},
+              {0, 6160},   {0, 7501},  {0, 1655},  {0, 944},   {0, 4791},   {0, 1640},
+              {0, 2915},   {0, 2721},  {0, 422},   {0, 1428},  {0, 8070},   {0, 373},
+              {0, 3684},   {0, 6726},  {0, 6156},  {0, 2618},  {0, 2407},   {0, 2897},
+              {0, 5099},   {0, 2783},  {0, 2031},  {0, 4854},  {0, 14545},  {0, 9953},
+              {0, 1723},   {0, 1254},  {0, 2245},  {0, 2200},  {0, 5209},   {0, 3796},
+              {0, 2098},   {0, 2715}};
 
 static std::unique_ptr<CBlockIndex> CreateBlockIndex(int nHeight, CBlockIndex* active_chain_tip) EXCLUSIVE_LOCKS_REQUIRED(cs_main)
 {
@@ -688,38 +688,62 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
     auto mining{MakeMining()};
     BOOST_REQUIRE(mining);
 
+    // Note that by default, these tests run with size accounting enabled.
     CScript scriptPubKey = CScript() << "04678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef38c4f35504e51ec112de5c384df7ba0b8d578a4c702b6bf11d5f"_hex << OP_CHECKSIG;
-
     BlockAssembler::Options options;
     options.coinbase_output_script = scriptPubKey;
 
+    // Create and check a simple template
     std::unique_ptr<BlockTemplate> block_template = mining->createNewBlock(options);
     BOOST_REQUIRE(block_template);
-
-    // базовая проверка
     {
         CBlock block{block_template->getBlock()};
-        std::string reason, debug;
+        {
+            std::string reason;
+            std::string debug;
+            BOOST_REQUIRE(!mining->checkBlock(block, {.check_pow = false}, reason, debug));
+            BOOST_REQUIRE_EQUAL(reason, "bad-txnmrklroot");
+            BOOST_REQUIRE_EQUAL(debug, "hashMerkleRoot mismatch");
+        }
 
-        BOOST_REQUIRE(!mining->checkBlock(block, {.check_pow = false}, reason, debug));
         block.hashMerkleRoot = BlockMerkleRoot(block);
-        BOOST_REQUIRE(mining->checkBlock(block, {.check_pow = false}, reason, debug));
 
-        while (CheckProofOfWork(block.GetArgon2idPoWHash(), block.nBits,
-               Assert(m_node.chainman)->GetParams().GetConsensus())) {
-            block.nNonce++;
+        {
+            std::string reason;
+            std::string debug;
+            BOOST_REQUIRE(mining->checkBlock(block, {.check_pow = false}, reason, debug));
+            BOOST_REQUIRE_EQUAL(reason, "");
+            BOOST_REQUIRE_EQUAL(debug, "");
+        }
+
+        {
+            // A block template does not have proof-of-work, but it might pass
+            // verification by coincidence. Grind the nonce if needed:
+            while (CheckProofOfWork(block.GetArgon2idPoWHash(), block.nBits, Assert(m_node.chainman)->GetParams().GetConsensus())) {
+                block.nNonce++;
+            }
+
+            std::string reason;
+            std::string debug;
+            BOOST_REQUIRE(!mining->checkBlock(block, {.check_pow = true}, reason, debug));
+            BOOST_REQUIRE_EQUAL(reason, "high-hash");
+            BOOST_REQUIRE_EQUAL(debug, "proof of work failed");
         }
     }
 
-    FILE* f = fopen("/tmp/blockinfo.txt", "w");
-    BOOST_REQUIRE(f != nullptr);
-
+    // We can't make transactions until we have inputs
+    // Therefore, load 110 blocks :)
+    static_assert(std::size(BLOCKINFO) == 110, "Should have 110 blocks to import");
     int baseheight = 0;
     std::vector<CTransactionRef> txFirst;
+    for (const auto& bi : BLOCKINFO) {
+        const int current_height{mining->getTip()->height};
 
-    for (int i = 0; i < 110; ++i) {
-        const int current_height = mining->getTip()->height;
-
+        /**
+         * Simple block creation, nothing special yet.
+         * If current_height is odd, block_template will have already been
+         * set at the end of the previous loop.
+         */
         if (current_height % 2 == 0) {
             block_template = mining->createNewBlock(options);
             BOOST_REQUIRE(block_template);
@@ -727,79 +751,46 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
 
         CBlock block{block_template->getBlock()};
         CMutableTransaction txCoinbase(*block.vtx[0]);
-
-        uint32_t extranonce = 0;
-
         {
             LOCK(cs_main);
-
             block.nVersion = VERSIONBITS_TOP_BITS;
-            block.nTime = Assert(m_node.chainman)->ActiveChain().Tip()->GetMedianTimePast() + 1;
-
-            while (true) {
-                // coinbase scriptSig
-                txCoinbase.vin[0].scriptSig = CScript{} << (current_height + 1) << extranonce;
-
-                // 🔥 КЛЮЧЕВОЙ ФИКС
-                txCoinbase.vout.resize(1);
-                txCoinbase.vout[0].scriptPubKey = CScript();
-
-                block.vtx[0] = MakeTransactionRef(txCoinbase);
-
-                block.hashMerkleRoot = BlockMerkleRoot(block);
-
-                block.nNonce = 0;
-
-                while (!CheckProofOfWork(
-                    block.GetArgon2idPoWHash(),
-                    block.nBits,
-                    Assert(m_node.chainman)->GetParams().GetConsensus())) {
-                    ++block.nNonce;
-                }
-
-                fprintf(f, "{%u, %u},\n", extranonce, block.nNonce);
-                fflush(f);
-                break;
-            }
-
-            if (txFirst.empty()) {
+            block.nTime = Assert(m_node.chainman)->ActiveChain().Tip()->GetMedianTimePast()+1;
+            txCoinbase.version = 1;
+            txCoinbase.vin[0].scriptSig = CScript{} << (current_height + 1) << bi.extranonce;
+            txCoinbase.vout.resize(1); // Ignore the (optional) segwit commitment added by CreateNewBlock (as the hardcoded nonces don't account for this)
+            txCoinbase.vout[0].scriptPubKey = CScript();
+            block.vtx[0] = MakeTransactionRef(txCoinbase);
+            if (txFirst.size() == 0)
                 baseheight = current_height;
-            }
-            if (txFirst.size() < 4) {
+            if (txFirst.size() < 4)
                 txFirst.push_back(block.vtx[0]);
-            }
+            block.hashMerkleRoot = BlockMerkleRoot(block);
+            block.nNonce = bi.nonce;
         }
-
-        auto shared_pblock = std::make_shared<const CBlock>(block);
-
+        std::shared_ptr<const CBlock> shared_pblock = std::make_shared<const CBlock>(block);
+        // Alternate calls between Chainman's ProcessNewBlock and submitSolution
+        // via the Mining interface. The former is used by net_processing as well
+        // as the submitblock RPC.
         if (current_height % 2 == 0) {
-            BOOST_REQUIRE(Assert(m_node.chainman)->ProcessNewBlock(shared_pblock, true, true, nullptr));
+            BOOST_REQUIRE(Assert(m_node.chainman)->ProcessNewBlock(shared_pblock, /*force_processing=*/true, /*min_pow_checked=*/true, nullptr));
         } else {
-            BOOST_REQUIRE(block_template->submitSolution(
-                block.nVersion,
-                block.nTime,
-                block.nNonce,
-                MakeTransactionRef(txCoinbase)
-            ));
+            BOOST_REQUIRE(block_template->submitSolution(block.nVersion, block.nTime, block.nNonce, MakeTransactionRef(txCoinbase)));
         }
-
         {
             LOCK(cs_main);
-            BOOST_REQUIRE_EQUAL(
-                Assert(m_node.chainman)->ActiveChain().Tip()->GetBlockHash(),
-                block.GetHash()
-            );
+            // The above calls don't guarantee the tip is actually updated, so
+            // we explicitly check this.
+            auto maybe_new_tip{Assert(m_node.chainman)->ActiveChain().Tip()};
+            BOOST_REQUIRE_EQUAL(maybe_new_tip->GetBlockHash(), block.GetHash());
         }
-
         if (current_height % 2 == 0) {
             block_template = block_template->waitNext();
             BOOST_REQUIRE(block_template);
         } else {
+            // This just adds coverage
             mining->waitTipChanged(block.hashPrevBlock);
         }
     }
-
-    fclose(f);
 
     LOCK(cs_main);
 
