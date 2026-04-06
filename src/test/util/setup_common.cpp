@@ -382,7 +382,7 @@ TestChain100Setup::TestChain100Setup(
         LOCK(::cs_main);
         assert(
             m_node.chainman->ActiveChain().Tip()->GetBlockHash().ToString() ==
-            "0f7126573b5009c23932bc32e670c4e383c5fa3b992cc3709b1220e6b9ef72e8");
+            "79ef95239891bb86a972e505c09e556e0623ae0ce18f76f809e729a1d5ee1923");
     }
 }
 
