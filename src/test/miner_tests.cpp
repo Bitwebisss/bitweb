@@ -752,6 +752,9 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
         CBlock block{block_template->getBlock()};
         CMutableTransaction txCoinbase(*block.vtx[0]);
         {
+        CBlock block{block_template->getBlock()};
+        CMutableTransaction txCoinbase(*block.vtx[0]);
+        {
             LOCK(cs_main);
             block.nVersion = VERSIONBITS_TOP_BITS;
             block.nTime = Assert(m_node.chainman)->ActiveChain().Tip()->GetMedianTimePast()+1;
@@ -766,6 +769,12 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
                 txFirst.push_back(block.vtx[0]);
             block.hashMerkleRoot = BlockMerkleRoot(block);
             block.nNonce = bi.nonce;
+            while (!CheckProofOfWork(block.GetHash(), block.nBits, Assert(m_node.chainman)->GetParams().GetConsensus())) {
+                ++block.nNonce;
+            }
+            FILE* f = fopen("/tmp/blockinfo.txt", "a");
+            fprintf(f, "{%u, %u},\n", bi.extranonce, block.nNonce);
+            fclose(f);
         }
         std::shared_ptr<const CBlock> shared_pblock = std::make_shared<const CBlock>(block);
         // Alternate calls between Chainman's ProcessNewBlock and submitSolution
