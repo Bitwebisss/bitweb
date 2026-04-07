@@ -16,7 +16,7 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHead
     assert(pindexLast != nullptr);
     unsigned int nProofOfWorkLimit = UintToArith256(params.powLimit).GetCompact();
 
-    if (pindexLast->nHeight < 500) {
+    if (pindexLast->nHeight < 3000) {
         return nProofOfWorkLimit;
     }
 
