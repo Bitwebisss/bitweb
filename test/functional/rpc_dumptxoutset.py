@@ -41,6 +41,13 @@ class DumptxoutsetTest(BitcoinTestFramework):
         out = node.dumptxoutset(FILENAME, "latest")
         expected_path = node.chain_path / FILENAME
 
+        self.log.info(f"coins_written   = {out['coins_written']}")
+        self.log.info(f"base_height     = {out['base_height']}")
+        self.log.info(f"base_hash       = {out['base_hash']}")
+        self.log.info(f"txoutset_hash   = {out['txoutset_hash']}")
+        self.log.info(f"nchaintx        = {out['nchaintx']}")
+        self.log.info(f"sha256_file     = {sha256sum_file(str(expected_path)).hex()}")
+
         assert expected_path.is_file()
 
         assert_equal(out['coins_written'], 100)
