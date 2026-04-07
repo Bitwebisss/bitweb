@@ -98,7 +98,7 @@ public:
         consensus.SegwitHeight = 481824; // 0000000000000000001c8018d9cb3b742ef25114f27563e3fc4a1902167f9893
         consensus.MinBIP9WarningHeight = 483840; // segwit activation height + miner confirmation window
         consensus.powLimit = uint256{"00000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffff"};
-        consensus.nPowTargetTimespan = 14 * 24 * 60 * 60; // two weeks
+        consensus.nPowTargetTimespan = 5 * 60; // two weeks
         consensus.nPowTargetSpacing = 5 * 60;
         consensus.fPowAllowMinDifficultyBlocks = false;
         consensus.enforce_BIP94 = false;
@@ -237,7 +237,7 @@ public:
         consensus.SegwitHeight = 834624; // 00000000002b980fcd729daaa248fd9316a5200e9b367f4ff2c42453e84201ca
         consensus.MinBIP9WarningHeight = 836640; // segwit activation height + miner confirmation window
         consensus.powLimit = uint256{"00000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffff"};
-        consensus.nPowTargetTimespan = 14 * 24 * 60 * 60; // two weeks
+        consensus.nPowTargetTimespan = 5 * 60; // two weeks
         consensus.nPowTargetSpacing = 5 * 60;
         consensus.fPowAllowMinDifficultyBlocks = true;
         consensus.enforce_BIP94 = false;
@@ -340,7 +340,7 @@ public:
         consensus.SegwitHeight = 1;
         consensus.MinBIP9WarningHeight = 0;
         consensus.powLimit = uint256{"00000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffff"};
-        consensus.nPowTargetTimespan = 14 * 24 * 60 * 60; // two weeks
+        consensus.nPowTargetTimespan = 5 * 60; // two weeks
         consensus.nPowTargetSpacing = 5 * 60;
         consensus.fPowAllowMinDifficultyBlocks = true;
         consensus.enforce_BIP94 = true;
@@ -485,7 +485,7 @@ public:
         consensus.BIP66Height = 1;
         consensus.CSVHeight = 1;
         consensus.SegwitHeight = 1;
-        consensus.nPowTargetTimespan = 14 * 24 * 60 * 60; // two weeks
+        consensus.nPowTargetTimespan = 5 * 60; // two weeks
         consensus.nPowTargetSpacing = 5 * 60;
         consensus.fPowAllowMinDifficultyBlocks = false;
         consensus.enforce_BIP94 = false;
@@ -564,7 +564,7 @@ public:
         consensus.SegwitHeight = 0; // Always active unless overridden
         consensus.MinBIP9WarningHeight = 0;
         consensus.powLimit = uint256{"7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"};
-        consensus.nPowTargetTimespan = 24 * 60 * 60; // one day
+        consensus.nPowTargetTimespan = 5 * 60; // one day
         consensus.nPowTargetSpacing = 5 * 60;
         consensus.fPowAllowMinDifficultyBlocks = true;
         consensus.enforce_BIP94 = opts.enforce_bip94;
