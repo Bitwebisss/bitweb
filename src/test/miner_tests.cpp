@@ -752,9 +752,6 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
         CBlock block{block_template->getBlock()};
         CMutableTransaction txCoinbase(*block.vtx[0]);
         {
-        CBlock block{block_template->getBlock()};
-        CMutableTransaction txCoinbase(*block.vtx[0]);
-        {
             LOCK(cs_main);
             block.nVersion = VERSIONBITS_TOP_BITS;
             block.nTime = Assert(m_node.chainman)->ActiveChain().Tip()->GetMedianTimePast()+1;
