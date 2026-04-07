@@ -532,7 +532,7 @@ class BlockchainTest(BitcoinTestFramework):
 
         # This should be 2 hashes every 10 minutes or 1/300
         hashes_per_second = self.nodes[0].getnetworkhashps()
-        assert abs(hashes_per_second * 300 - 1) < 0.0001
+        assert abs(hashes_per_second * 150 - 1) < 0.0001
 
         # Test setting the first param of getnetworkhashps to -1 returns the average network
         # hashes per second from the last difficulty change.
