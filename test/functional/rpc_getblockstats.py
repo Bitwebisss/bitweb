@@ -25,7 +25,6 @@ class GetblockstatsTest(BitcoinTestFramework):
     max_stat_pos = 2
 
     def add_options(self, parser):
-        self.add_wallet_options(parser)
         parser.add_argument('--gen-test-data', dest='gen_test_data',
                             default=False, action='store_true',
                             help='Generate test data')
@@ -37,6 +36,9 @@ class GetblockstatsTest(BitcoinTestFramework):
     def set_test_params(self):
         self.num_nodes = 1
         self.setup_clean_chain = True
+        self.uses_wallet = True
+        self.wallet_names = []
+        self.extra_args = [["-deprecatedrpc=settxfee"]]
 
     def get_stats(self):
         return [self.nodes[0].getblockstats(hash_or_height=self.start_height + i) for i in range(self.max_stat_pos+1)]
