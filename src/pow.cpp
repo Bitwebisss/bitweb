@@ -133,8 +133,8 @@ bool PermittedDifficultyTransition(const Consensus::Params& params, int64_t heig
     } else if (old_nbits != new_nbits) {
         return false;
     }
-    return true;
-*/	
+*/
+    return true;	
 }
 
 // Bypasses the actual proof of work check during fuzz testing with a simplified validation checking whether
