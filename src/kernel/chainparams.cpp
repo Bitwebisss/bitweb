@@ -622,10 +622,15 @@ public:
             consensus.vDeployments[deployment_pos].min_activation_height = version_bits_params.min_activation_height;
         }
 
-        // It's important for the tests to work correctly that the genesis value in the reg test is old, then we take it back 2 months from the mainnet date.
-        genesis = CreateGenesisBlock(1770409902, 0, 0x207fffff, 1, 50 * COIN);
+        // The regtest genesis date is set ~5 months before the mainnet date so tests pass.
+        // This avoids modifying test logic and does not affect regtest functionality.
+        // Otherwise, tests may fail with "time-too-new" errors because they assume
+        // a very old genesis block (as in Bitcoin regtest).
+        // This is only required when creating a new network from scratch;
+        // for existing networks older than 4 months, this step can be skipped.
+        genesis = CreateGenesisBlock(1762466947, 2, 0x207fffff, 1, 50 * COIN);
         consensus.hashGenesisBlock = genesis.GetHash();
-        assert(consensus.hashGenesisBlock == uint256{"79ef95239891bb86a972e505c09e556e0623ae0ce18f76f809e729a1d5ee1923"});
+        assert(consensus.hashGenesisBlock == uint256{"58db5699b0467443b67dd70f49cf4c3ae05d9e359ed3baaefd8a570b1519e350"});
         assert(genesis.hashMerkleRoot == uint256{"4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b"});
 
         vFixedSeeds.clear(); //!< Regtest mode doesn't have any fixed seeds.
@@ -638,7 +643,7 @@ public:
         // Checkpoints restored
         checkpointData = {
             {
-                {0, uint256{"79ef95239891bb86a972e505c09e556e0623ae0ce18f76f809e729a1d5ee1923"}},
+                {0, uint256{"58db5699b0467443b67dd70f49cf4c3ae05d9e359ed3baaefd8a570b1519e350"}},
             }
         };
         // Checkpoints restored
