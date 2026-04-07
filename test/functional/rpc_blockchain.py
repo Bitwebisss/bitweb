@@ -283,7 +283,7 @@ class BlockchainTest(BitcoinTestFramework):
 
     def _test_verificationprogress(self):
         self.log.info("Check that verificationprogress is less than 1 when the block tip is old")
-        future = 60 * 60
+        future = 2 * 60 * 60
         self.nodes[0].setmocktime(self.nodes[0].getblockchaininfo()["time"] + future + 1)
         assert_greater_than(1, self.nodes[0].getblockchaininfo()["verificationprogress"])
 

@@ -55,7 +55,7 @@ MAX_STANDARD_TX_WEIGHT = 400000
 # Genesis block time (regtest)
 TIME_GENESIS_BLOCK = 1762466947
 
-MAX_FUTURE_BLOCK_TIME = 60 * 60
+MAX_FUTURE_BLOCK_TIME = 2 * 60 * 60
 
 # Coinbase transaction outputs can only be spent after this number of new blocks (network rule)
 COINBASE_MATURITY = 100
