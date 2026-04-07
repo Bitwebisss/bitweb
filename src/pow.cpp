@@ -10,17 +10,11 @@
 #include <primitives/block.h>
 #include <uint256.h>
 #include <util/check.h>
-
+/*
 unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHeader *pblock, const Consensus::Params& params)
 {
     assert(pindexLast != nullptr);
     unsigned int nProofOfWorkLimit = UintToArith256(params.powLimit).GetCompact();
-
-//    if (params.fPowNoRetargeting)
-//        return pindexLast->nBits;
-
-    if (pindexLast->nHeight == 0)
-        return nProofOfWorkLimit;
 
     // Only change once per difficulty adjustment interval
     if ((pindexLast->nHeight+1) % params.DifficultyAdjustmentInterval() != 0)
@@ -47,6 +41,26 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHead
     // Go back by what we want to be 14 days worth of blocks
     int nHeightFirst = pindexLast->nHeight - (params.DifficultyAdjustmentInterval()-1);
     assert(nHeightFirst >= 0);
+    const CBlockIndex* pindexFirst = pindexLast->GetAncestor(nHeightFirst);
+    assert(pindexFirst);
+
+    return CalculateNextWorkRequired(pindexLast, pindexFirst->GetBlockTime(), params);
+}
+*/
+
+unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHeader* pblock, const Consensus::Params& params)
+{
+    assert(pindexLast != nullptr);
+    unsigned int nProofOfWorkLimit = UintToArith256(params.powLimit).GetCompact();
+
+    // Тестовая / регтестовая сеть: не ретаргетим вообще
+    if (params.fPowNoRetargeting || params.DifficultyAdjustmentInterval() == 1)
+        return nProofOfWorkLimit;
+
+    if ((pindexLast->nHeight + 1) % params.DifficultyAdjustmentInterval() != 0)
+        return pindexLast->nBits;
+
+    int nHeightFirst = pindexLast->nHeight - (params.DifficultyAdjustmentInterval() - 1);
     const CBlockIndex* pindexFirst = pindexLast->GetAncestor(nHeightFirst);
     assert(pindexFirst);
 
