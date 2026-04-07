@@ -19,9 +19,8 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHead
     if (params.fPowNoRetargeting)
         return pindexLast->nBits;
 
-//    if (pindexLast->nHeight < 3000) {
-//        return nProofOfWorkLimit;
-//    }
+    if (pindexLast->nHeight == 0)
+        return nProofOfWorkLimit;
 
     // Only change once per difficulty adjustment interval
     if ((pindexLast->nHeight+1) % params.DifficultyAdjustmentInterval() != 0)
