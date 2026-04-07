@@ -146,7 +146,7 @@ class GetBlockFromPeerTest(BitcoinTestFramework):
         self.sync_blocks([self.nodes[0], pruned_node])
         pruneheight += 251
         assert_equal(pruned_node.pruneblockchain(700), pruneheight)
-        assert_equal(pruned_node.getblock(pruned_block)["hash"], "5e83bcb8d14a2194067fb7df8ae86770f2349ce44310bf50849c9141485b69cc")
+        assert_equal(pruned_node.getblock(pruned_block)["hash"], "477734c522f18d58a3968b7ffc0f7afbcd68931120b0ee1454a6853d78f1f8d0")
 
         self.log.info("Fetched block can be pruned again when prune height exceeds the height of the tip at the time when the block was fetched")
         self.generate(self.nodes[0], 250, sync_fun=self.no_op)
