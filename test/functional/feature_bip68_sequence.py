@@ -38,6 +38,9 @@ SCRIPT_W0_SH_OP_TRUE = script_to_p2wsh_script(CScript([OP_TRUE]))
 
 SEQUENCE_LOCKTIME_DISABLE_FLAG = (1<<31)
 SEQUENCE_LOCKTIME_TYPE_FLAG = (1<<22) # this means use time (0 means height)
+# SEQUENCE_LOCKTIME_GRANULARITY=9 means 1 time unit = 512s (~2 blocks at 300s).
+# Kept at 9 (not 8) for compatibility with Bitcoin ecosystem tooling
+# (wallets, scripts, libraries) that build nSequence assuming 512s units.
 SEQUENCE_LOCKTIME_GRANULARITY = 9 # this is a bit-shift
 SEQUENCE_LOCKTIME_MASK = 0x0000ffff
 
@@ -282,7 +285,15 @@ class BIP68Test(BitcoinTestFramework):
         # Save block template now to use for the reorg later
         tmpl = self.nodes[0].getblocktemplate(NORMAL_GBT_REQUEST_PARAMS)
         self.generate(self.nodes[0], 1)
+        cur_time += 300
         assert tx2.txid_hex not in self.nodes[0].getrawmempool()
+
+        # With SEQUENCE_LOCKTIME_GRANULARITY=9, nSequence=1 with time flag means
+        # 1 * 512s must elapse. At 300s per block this requires 2 blocks (600s > 512s).
+        # GRANULARITY is kept at 9 (not 8) for ecosystem compatibility.
+        self.nodes[0].setmocktime(cur_time+300)
+        self.generate(self.nodes[0], 1)
+        cur_time += 300
 
         # Now that tx2 is not in the mempool, a sequence locked spend should
         # succeed
