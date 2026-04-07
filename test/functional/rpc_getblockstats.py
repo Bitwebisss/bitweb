@@ -38,6 +38,7 @@ class GetblockstatsTest(BitcoinTestFramework):
         self.setup_clean_chain = True
         self.uses_wallet = True
         self.wallet_names = []
+        self.extra_args = [["-deprecatedrpc=settxfee"]]
 
     def get_stats(self):
         return [self.nodes[0].getblockstats(hash_or_height=self.start_height + i) for i in range(self.max_stat_pos+1)]
