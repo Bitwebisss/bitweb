@@ -42,7 +42,13 @@ struct MinerTestingSetup : public TestingSetup {
     MinerTestingSetup() : TestingSetup(
         ChainType::REGTEST,
         TestOpts{
-            .extra_args = {"-testactivationheight=csv@1000000"}
+            .extra_args = {
+                "-testactivationheight=bip34@1000",
+                "-testactivationheight=cltv@1000",
+                "-testactivationheight=dersig@1000",
+                "-testactivationheight=csv@1000",
+                "-testactivationheight=segwit@1000"
+            }
         }
     ) {}
     void TestPackageSelection(const CScript& scriptPubKey, const std::vector<CTransactionRef>& txFirst) EXCLUSIVE_LOCKS_REQUIRED(::cs_main);
