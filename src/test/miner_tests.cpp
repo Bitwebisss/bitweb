@@ -585,7 +585,7 @@ void MinerTestingSetup::TestBasicMining(const CScript& scriptPubKey, const std::
     // However if we advance height by 1 and time by SEQUENCE_LOCK_TIME, all of them should be mined
     for (int i = 0; i < CBlockIndex::nMedianTimeSpan; ++i) {
         CBlockIndex* ancestor{Assert(m_node.chainman->ActiveChain().Tip()->GetAncestor(m_node.chainman->ActiveChain().Tip()->nHeight - i))};
-        ancestor->nTime += SEQUENCE_LOCK_TIME; // Trick the MedianTimePast
+        ancestor->nTime += SEQUENCE_LOCK_TIME + 1; // Trick the MedianTimePast
     }
     m_node.chainman->ActiveChain().Tip()->nHeight++;
     SetMockTime(m_node.chainman->ActiveChain().Tip()->GetMedianTimePast() + 1);
