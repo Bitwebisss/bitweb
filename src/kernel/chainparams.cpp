@@ -601,9 +601,9 @@ public:
         m_assumeutxo_data = {
             {   // For use by unit tests
                 .height = 110,
-                .hash_serialized = AssumeutxoHash{uint256{"28932dd8000060cf28933048000000000000008300007fffadec779000007fff"}},
+                .hash_serialized = AssumeutxoHash{uint256{"b952555c8ab81fec46f3d4253b7af256d766ceb39fb7752b9d18cdf4a0141327"}},
                 .m_chain_tx_count = 111,
-                .blockhash = consteval_ctor(uint256{"46ecd9b2d4a07c7aefc54e86925fb2b10d227b1f0b7cb412f4ad62c2481f6f21"}),
+                .blockhash = consteval_ctor(uint256{"3e891cac39e9d1ba8646414caa6d138dbdefda114f5bda751d360e232ca947b6"}),
             },
             {
                 // For use by fuzz target src/test/fuzz/utxo_snapshot.cpp
