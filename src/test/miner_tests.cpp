@@ -502,15 +502,7 @@ void MinerTestingSetup::TestBasicMining(const CScript& scriptPubKey, const std::
     tx.vout[0].scriptPubKey = CScript() << OP_1;
     tx.nLockTime = 0;
     hash = tx.GetHash();
-    {
-        CCoinsViewMemPool view_mempool{&m_node.chainman->ActiveChainstate().CoinsTip(), tx_mempool};
-        CBlockIndex* tip_ptr{m_node.chainman->ActiveChain().Tip()};
-        const auto lp{CalculateLockPointsAtTip(tip_ptr, view_mempool, CTransaction(tx))};
-        BOOST_REQUIRE(lp.has_value());
-        entry.lp = *lp;
-    }
     AddToMempool(tx_mempool, entry.Fee(HIGHFEE).Time(Now<NodeSeconds>()).SpendsCoinbase(true).FromTx(tx));
-    entry.lp = LockPoints{};
     BOOST_CHECK(CheckFinalTxAtTip(*Assert(m_node.chainman->ActiveChain().Tip()), CTransaction{tx})); // Locktime passes
     BOOST_CHECK(!TestSequenceLocks(CTransaction{tx}, tx_mempool)); // Sequence locks fail
 
@@ -524,15 +516,7 @@ void MinerTestingSetup::TestBasicMining(const CScript& scriptPubKey, const std::
     tx.vin[0].nSequence = CTxIn::SEQUENCE_LOCKTIME_TYPE_FLAG | (((m_node.chainman->ActiveChain().Tip()->GetMedianTimePast()+1-m_node.chainman->ActiveChain()[1]->GetMedianTimePast()) >> CTxIn::SEQUENCE_LOCKTIME_GRANULARITY) + 1); // txFirst[1] is the 3rd block
     prevheights[0] = baseheight + 2;
     hash = tx.GetHash();
-    {
-        CCoinsViewMemPool view_mempool{&m_node.chainman->ActiveChainstate().CoinsTip(), tx_mempool};
-        CBlockIndex* tip_ptr{m_node.chainman->ActiveChain().Tip()};
-        const auto lp{CalculateLockPointsAtTip(tip_ptr, view_mempool, CTransaction(tx))};
-        BOOST_REQUIRE(lp.has_value());
-        entry.lp = *lp;
-    }
     AddToMempool(tx_mempool, entry.Time(Now<NodeSeconds>()).FromTx(tx));
-    entry.lp = LockPoints{};
     BOOST_CHECK(CheckFinalTxAtTip(*Assert(m_node.chainman->ActiveChain().Tip()), CTransaction{tx})); // Locktime passes
     BOOST_CHECK(!TestSequenceLocks(CTransaction{tx}, tx_mempool)); // Sequence locks fail
 
@@ -592,12 +576,13 @@ void MinerTestingSetup::TestBasicMining(const CScript& scriptPubKey, const std::
     auto block_template = mining->createNewBlock(options);
     BOOST_REQUIRE(block_template);
 
-    // Absolute height/time locked txs are excluded by IsFinalTx.
-    // Relative locked txs are now correctly excluded by the miner because proper
-    // LockPoints are stored (BIP68 active from CSVHeight=2 in mainnet).
+    // None of the of the absolute height/time locked tx should have made
+    // it into the template because we still check IsFinalTx in CreateNewBlock,
+    // but relative locked txs will if inconsistently added to mempool.
+    // For now these will still generate a valid template until BIP68 soft fork
     CBlock block{block_template->getBlock()};
-    BOOST_CHECK_EQUAL(block.vtx.size(), 1U);
-    // Advance height by 1 and time by SEQUENCE_LOCK_TIME: all 4 txs should now be mined
+    BOOST_CHECK_EQUAL(block.vtx.size(), 3U);
+    // However if we advance height by 1 and time by SEQUENCE_LOCK_TIME, all of them should be mined
     for (int i = 0; i < CBlockIndex::nMedianTimeSpan; ++i) {
         CBlockIndex* ancestor{Assert(m_node.chainman->ActiveChain().Tip()->GetAncestor(m_node.chainman->ActiveChain().Tip()->nHeight - i))};
         ancestor->nTime += SEQUENCE_LOCK_TIME; // Trick the MedianTimePast
