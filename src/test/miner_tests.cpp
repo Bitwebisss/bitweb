@@ -40,7 +40,6 @@ using node::BlockAssembler;
 namespace miner_tests {
 struct MinerTestingSetup : public TestingSetup {
     MinerTestingSetup() : TestingSetup(
-        ChainType::REGTEST,
         TestOpts{
             .extra_args = {"-testactivationheight=csv@1000000"}
         }
@@ -772,12 +771,12 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
                 txFirst.push_back(block.vtx[0]);
             block.hashMerkleRoot = BlockMerkleRoot(block);
             block.nNonce = bi.nonce;
-            while (!CheckProofOfWork(block.GetHash(), block.nBits, Assert(m_node.chainman)->GetParams().GetConsensus())) {
-                ++block.nNonce;
-            }
-            FILE* f = fopen("/tmp/blockinfo.txt", "a");
-            fprintf(f, "{%u, %u},\n", bi.extranonce, block.nNonce);
-            fclose(f);
+//            while (!CheckProofOfWork(block.GetHash(), block.nBits, Assert(m_node.chainman)->GetParams().GetConsensus())) {
+//                ++block.nNonce;
+//            }
+//            FILE* f = fopen("/tmp/blockinfo.txt", "a");
+//            fprintf(f, "{%u, %u},\n", bi.extranonce, block.nNonce);
+//            fclose(f);
         }
         std::shared_ptr<const CBlock> shared_pblock = std::make_shared<const CBlock>(block);
         // Alternate calls between Chainman's ProcessNewBlock and submitSolution
