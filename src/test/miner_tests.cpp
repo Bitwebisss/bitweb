@@ -719,7 +719,7 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
         {
             // A block template does not have proof-of-work, but it might pass
             // verification by coincidence. Grind the nonce if needed:
-            while (CheckProofOfWork(block.GetArgon2idPoWHash(), block.nBits, Assert(m_node.chainman)->GetParams().GetConsensus())) {
+            while (CheckProofOfWork(block.GetHash(), block.nBits, Assert(m_node.chainman)->GetParams().GetConsensus())) {
                 block.nNonce++;
             }
 
@@ -806,107 +806,5 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
 
     TestPrioritisedMining(scriptPubKey, txFirst);
 }
-
-// ============================================================
-// ВСТАВИТЬ В miner_tests.cpp ПРЯМО ПЕРЕД строкой:
-//   BOOST_AUTO_TEST_SUITE_END()
-// ============================================================
-//
-// ЗАПУСК (только этот тест, без остальных):
-//   ./src/test/test_bitcoin --run_test=miner_tests/GenerateBlockInfo 2>/dev/null
-//
-// Результат пишется в файл blockinfo_generated.txt рядом с бинарником.
-// Содержимое файла — готовый массив для вставки вместо старого BLOCKINFO[].
-// ============================================================
-
-BOOST_AUTO_TEST_CASE(GenerateBlockInfo)
-{
-    CScript scriptPubKey = CScript() << ParseHex("04678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef38c4f35504e51ec112de5c384df7ba0b8d578a4c702b6bf11d5f") << OP_CHECKSIG;
-    std::unique_ptr<CBlockTemplate> pblocktemplate;
-    CTxMemPool& tx_mempool{*m_node.mempool};
-
-    pblocktemplate = AssemblerForTest(tx_mempool).CreateNewBlock(scriptPubKey);
-    BOOST_REQUIRE(pblocktemplate);
-
-    FILE* outfile = fopen("blockinfo_generated.txt", "w");
-    BOOST_REQUIRE_MESSAGE(outfile != nullptr, "Cannot open blockinfo_generated.txt for writing");
-
-    fprintf(outfile, "// Auto-generated BLOCKINFO for Argon2id PoW\n");
-    fprintf(outfile, "// Replace the old BLOCKINFO[] array with this.\n\n");
-    fprintf(outfile, "constexpr static struct {\n");
-    fprintf(outfile, "    unsigned char extranonce;\n");
-    fprintf(outfile, "    unsigned int nonce;\n");
-    fprintf(outfile, "} BLOCKINFO[]{");
-
-    for (int i = 0; i < 110; i++) {
-        CBlock* pblock = &pblocktemplate->block;
-
-        unsigned char extranonce = 0;
-        unsigned int found_nonce = 0;
-        bool found = false;
-
-        LOCK(cs_main);
-
-        while (!found) {
-            // Точная копия coinbase-конструкции из CreateNewBlock_validity
-            CMutableTransaction txCoinbase(*pblock->vtx[0]);
-            txCoinbase.nVersion = 1;
-            txCoinbase.vin[0].scriptSig = CScript{} << (m_node.chainman->ActiveChain().Height() + 1) << (int)extranonce;
-            txCoinbase.vout.resize(1);
-            txCoinbase.vout[0].scriptPubKey = CScript();
-            pblock->vtx[0] = MakeTransactionRef(std::move(txCoinbase));
-            pblock->nVersion = VERSIONBITS_TOP_BITS;
-            pblock->nTime = m_node.chainman->ActiveChain().Tip()->GetMedianTimePast() + 1;
-            pblock->hashMerkleRoot = BlockMerkleRoot(*pblock);
-            pblock->nNonce = 0;
-
-            while (pblock->nNonce != std::numeric_limits<unsigned int>::max()) {
-                if (CheckProofOfWork(pblock->GetArgon2idPoWHash(), pblock->nBits,
-                                     Assert(m_node.chainman)->GetParams().GetConsensus())) {
-                    found_nonce = pblock->nNonce;
-                    found = true;
-                    break;
-                }
-                ++pblock->nNonce;
-            }
-
-            if (!found) {
-                BOOST_REQUIRE_MESSAGE(extranonce < 255,
-                    "extranonce overflow at block " + std::to_string(i) + " — check nBits");
-                ++extranonce;
-            }
-        }
-
-        // Форматирование: 6 пар на строку, как в оригинале
-        if (i == 0) {
-            fprintf(outfile, "{%u, %u}", (unsigned)extranonce, found_nonce);
-        } else if (i % 6 == 0) {
-            fprintf(outfile, ",\n              {%u, %u}", (unsigned)extranonce, found_nonce);
-        } else {
-            fprintf(outfile, ", {%u, %u}", (unsigned)extranonce, found_nonce);
-        }
-
-        // Применяем найденный валидный блок в цепь
-        pblock->nNonce = found_nonce;
-        std::shared_ptr<const CBlock> shared_pblock = std::make_shared<const CBlock>(*pblock);
-        bool ok = Assert(m_node.chainman)->ProcessNewBlock(shared_pblock, true, true, nullptr);
-        BOOST_REQUIRE_MESSAGE(ok, "ProcessNewBlock rejected block " + std::to_string(i) +
-                              " extranonce=" + std::to_string(extranonce) +
-                              " nonce=" + std::to_string(found_nonce));
-
-        pblock->hashPrevBlock = pblock->GetHash();
-        pblocktemplate = AssemblerForTest(tx_mempool).CreateNewBlock(scriptPubKey);
-        BOOST_REQUIRE(pblocktemplate);
-    }
-
-    fprintf(outfile, "};\n");
-    fclose(outfile);
-
-    BOOST_TEST_MESSAGE("Done. See blockinfo_generated.txt");
-}
-
-// ============================================================
-// КОНЕЦ ВСТАВКИ — дальше идёт BOOST_AUTO_TEST_SUITE_END()
-// ============================================================
 
 BOOST_AUTO_TEST_SUITE_END()

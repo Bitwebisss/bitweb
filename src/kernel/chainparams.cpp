@@ -572,6 +572,12 @@ public:
             consensus.vDeployments[deployment_pos].min_activation_height = version_bits_params.min_activation_height;
         }
 
+        // The regtest genesis date is set ~5 months before the mainnet date so tests pass.
+        // This avoids modifying test logic and does not affect regtest functionality.
+        // Otherwise, tests may fail with "time-too-new" errors because they assume
+        // a very old genesis block (as in Bitcoin regtest).
+        // This is only required when creating a new network from scratch;
+        // for existing networks older than 4 months, this step can be skipped.
         genesis = CreateGenesisBlock(1762631438, 0, 0x207fffff, 1, 50 * COIN);
         consensus.hashGenesisBlock = genesis.GetHash();
         assert(consensus.hashGenesisBlock == uint256{"765828115ef756680e3441c813fd5272a8b8638ebd532ea610c44efa784cc1e9"});
