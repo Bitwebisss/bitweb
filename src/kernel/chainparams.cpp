@@ -93,12 +93,12 @@ public:
         consensus.script_flag_exceptions.emplace( // Taproot exception
             uint256{"0000000000000000000f14c35b2d841e986ab5441de8c585d5ffe55ea1e395ad"}, SCRIPT_VERIFY_P2SH | SCRIPT_VERIFY_WITNESS);
         */
-        consensus.BIP34Height = 500;
+        consensus.BIP34Height = 100;
         consensus.BIP34Hash = uint256{};
-        consensus.BIP65Height = 500;
-        consensus.BIP66Height = 500;
-        consensus.CSVHeight = 500;
-        consensus.SegwitHeight = 500;
+        consensus.BIP65Height = 100;
+        consensus.BIP66Height = 100;
+        consensus.CSVHeight = 100;
+        consensus.SegwitHeight = 100;
         consensus.MinBIP9WarningHeight = 4532; // segwit activation height + miner confirmation window
         consensus.powLimit = uint256{"00000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffff"};
         consensus.nPowTargetTimespan = 14 * 24 * 60 * 60; // two weeks
