@@ -40,11 +40,8 @@ using node::BlockAssembler;
 namespace miner_tests {
 struct MinerTestingSetup : public TestingSetup {
     MinerTestingSetup() : TestingSetup(
-<<<<<<< HEAD
         ChainType::MAIN,
-=======
         ChainType::REGTEST,
->>>>>>> parent of c27e4b5e8b (Update miner_tests.cpp)
         TestOpts{
             .extra_args = {"-testactivationheight=csv@1000000"}
         }
