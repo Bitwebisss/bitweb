@@ -97,7 +97,7 @@ public:
         consensus.BIP34Hash = uint256{};
         consensus.BIP65Height = 100;
         consensus.BIP66Height = 100;
-        consensus.CSVHeight = 100;
+        consensus.CSVHeight = 500;
         consensus.SegwitHeight = 100;
         consensus.MinBIP9WarningHeight = 4532; // segwit activation height + miner confirmation window
         consensus.powLimit = uint256{"00000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffff"};
