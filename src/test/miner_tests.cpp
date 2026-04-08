@@ -39,6 +39,12 @@ using node::BlockAssembler;
 
 namespace miner_tests {
 struct MinerTestingSetup : public TestingSetup {
+    MinerTestingSetup() : TestingSetup(
+        ChainType::REGTEST,
+        TestOpts{
+            .extra_args = {"-testactivationheight=csv@1000000"}
+        }
+    ) {}
     void TestPackageSelection(const CScript& scriptPubKey, const std::vector<CTransactionRef>& txFirst) EXCLUSIVE_LOCKS_REQUIRED(::cs_main);
     void TestBasicMining(const CScript& scriptPubKey, const std::vector<CTransactionRef>& txFirst, int baseheight) EXCLUSIVE_LOCKS_REQUIRED(::cs_main);
     void TestPrioritisedMining(const CScript& scriptPubKey, const std::vector<CTransactionRef>& txFirst) EXCLUSIVE_LOCKS_REQUIRED(::cs_main);
@@ -495,7 +501,7 @@ void MinerTestingSetup::TestBasicMining(const CScript& scriptPubKey, const std::
     tx.vin[0].prevout.hash = txFirst[0]->GetHash(); // only 1 transaction
     tx.vin[0].prevout.n = 0;
     tx.vin[0].scriptSig = CScript() << OP_1;
-    tx.vin[0].nSequence = 1;
+    tx.vin[0].nSequence = m_node.chainman->ActiveChain().Tip()->nHeight + 1; // txFirst[0] is the 2nd block
     prevheights[0] = baseheight + 1;
     tx.vout.resize(1);
     tx.vout[0].nValue = BLOCKSUBSIDY-HIGHFEE;
@@ -513,7 +519,7 @@ void MinerTestingSetup::TestBasicMining(const CScript& scriptPubKey, const std::
 
     // relative time locked
     tx.vin[0].prevout.hash = txFirst[1]->GetHash();
-    tx.vin[0].nSequence = CTxIn::SEQUENCE_LOCKTIME_TYPE_FLAG | 1;
+    tx.vin[0].nSequence = CTxIn::SEQUENCE_LOCKTIME_TYPE_FLAG | (((m_node.chainman->ActiveChain().Tip()->GetMedianTimePast()+1-m_node.chainman->ActiveChain()[1]->GetMedianTimePast()) >> CTxIn::SEQUENCE_LOCKTIME_GRANULARITY) + 1); // txFirst[1] is the 3rd block
     prevheights[0] = baseheight + 2;
     hash = tx.GetHash();
     AddToMempool(tx_mempool, entry.Time(Now<NodeSeconds>()).FromTx(tx));
