@@ -495,7 +495,7 @@ void MinerTestingSetup::TestBasicMining(const CScript& scriptPubKey, const std::
     tx.vin[0].prevout.hash = txFirst[0]->GetHash(); // only 1 transaction
     tx.vin[0].prevout.n = 0;
     tx.vin[0].scriptSig = CScript() << OP_1;
-    tx.vin[0].nSequence = m_node.chainman->ActiveChain().Tip()->nHeight - baseheight; // txFirst[0] is the 2nd block
+    tx.vin[0].nSequence = m_node.chainman->ActiveChain().Tip()->nHeight - baseheight + 2; // relative lock: txFirst[0] at height baseheight+1, needs baseheight+1+(nSequence) <= candidate height
     prevheights[0] = baseheight + 1;
     tx.vout.resize(1);
     tx.vout[0].nValue = BLOCKSUBSIDY-HIGHFEE;
@@ -578,16 +578,16 @@ void MinerTestingSetup::TestBasicMining(const CScript& scriptPubKey, const std::
 
     // None of the of the absolute height/time locked tx should have made
     // it into the template because we still check IsFinalTx in CreateNewBlock,
-    // but relative locked txs will if inconsistently added to mempool.
-    // For now these will still generate a valid template until BIP68 soft fork
+    // and BIP68 is active so relative locked txs are also excluded.
     CBlock block{block_template->getBlock()};
-    BOOST_CHECK_EQUAL(block.vtx.size(), 3U);
+    BOOST_CHECK_EQUAL(block.vtx.size(), 1U);
     // However if we advance height by 1 and time by SEQUENCE_LOCK_TIME, all of them should be mined
     for (int i = 0; i < CBlockIndex::nMedianTimeSpan; ++i) {
         CBlockIndex* ancestor{Assert(m_node.chainman->ActiveChain().Tip()->GetAncestor(m_node.chainman->ActiveChain().Tip()->nHeight - i))};
         ancestor->nTime += SEQUENCE_LOCK_TIME; // Trick the MedianTimePast
     }
     m_node.chainman->ActiveChain().Tip()->nHeight++;
+    m_node.chainman->ActiveChain().Tip()->BuildSkip();
     SetMockTime(m_node.chainman->ActiveChain().Tip()->GetMedianTimePast() + 1);
 
     block_template = mining->createNewBlock(options);
@@ -801,7 +801,6 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
 
     TestPackageSelection(scriptPubKey, txFirst);
 
-    m_node.chainman->ActiveChain().Tip()->nHeight--;
     SetMockTime(0);
 
     TestPrioritisedMining(scriptPubKey, txFirst);
