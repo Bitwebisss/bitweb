@@ -409,6 +409,71 @@ BOOST_AUTO_TEST_CASE(lwma3_mixed_solvetimes_determinism)
     BOOST_CHECK(resultTarget > arith_uint256(0));
 }
 
+// Test 8: fPowNoRetargeting — regtest должен всегда возвращать nBits родителя
+BOOST_AUTO_TEST_CASE(lwma3_no_retargeting)
+{
+    const auto chainParams = CreateChainParams(*m_node.args, ChainType::REGTEST);
+    const auto& consensus  = chainParams->GetConsensus();
+    // consensus.fPowNoRetargeting == true для regtest
+    const int64_t N = consensus.lwmaAveragingWindow;
+    const int64_t T = consensus.nPowTargetSpacing;
+    const unsigned int someBits = 0x207fffffU;
+
+    auto blocks = BuildChain(static_cast<int>(N + 3), someBits, 1775674812, T);
+    unsigned int result = GetNextWorkRequired(&blocks[N + 2], nullptr, consensus);
+    // Должен вернуть nBits последнего блока без изменений
+    BOOST_CHECK_EQUAL(result, someBits);
+}
+
+// Test 9: Одинаковые timestamps — защита от отрицательных solvetimes
+// Проверяет ветку: thisTimestamp = previousTimestamp + 1
+BOOST_AUTO_TEST_CASE(lwma3_duplicate_timestamps)
+{
+    const auto chainParams = CreateChainParams(*m_node.args, ChainType::MAIN);
+    const auto& consensus  = chainParams->GetConsensus();
+    const int64_t N        = consensus.lwmaAveragingWindow;
+    const unsigned int genesisBits = chainParams->GenesisBlock().nBits;
+    const arith_uint256 powLimit   = UintToArith256(consensus.powLimit);
+
+    // Все блоки с одним и тем же timestamp
+    auto blocks = BuildChain(static_cast<int>(N + 3), genesisBits, 1775674812, 0);
+
+    unsigned int result = GetNextWorkRequired(&blocks[N + 2], nullptr, consensus);
+    arith_uint256 resultTarget;
+    resultTarget.SetCompact(result);
+
+    // Алгоритм должен вернуть валидное число (не 0, не > powLimit)
+    BOOST_CHECK(resultTarget > arith_uint256(0));
+    BOOST_CHECK(resultTarget <= powLimit);
+    // С нулевыми solvetimes (все = 1 через fallback) сложность максимальная → target минимален
+    // Должно быть заметно ниже powLimit
+    BOOST_CHECK(resultTarget < UintToArith256(consensus.powLimit) / 2);
+}
+
+// Test 10: Монотонность — больший хешрейт = меньший target
+BOOST_AUTO_TEST_CASE(lwma3_monotone_difficulty)
+{
+    const auto chainParams = CreateChainParams(*m_node.args, ChainType::MAIN);
+    const auto& consensus  = chainParams->GetConsensus();
+    const int64_t N = consensus.lwmaAveragingWindow;
+    const int64_t T = consensus.nPowTargetSpacing;
+    const unsigned int genesisBits = chainParams->GenesisBlock().nBits;
+    const int lwma_height = static_cast<int>(N + 2);
+
+    auto blocks_2x = BuildChain(lwma_height + 1, genesisBits, 1775674812, T / 2);
+    auto blocks_3x = BuildChain(lwma_height + 1, genesisBits, 1775674812, T / 3);
+
+    unsigned int result_2x = GetNextWorkRequired(&blocks_2x[lwma_height], nullptr, consensus);
+    unsigned int result_3x = GetNextWorkRequired(&blocks_3x[lwma_height], nullptr, consensus);
+
+    arith_uint256 target_2x, target_3x;
+    target_2x.SetCompact(result_2x);
+    target_3x.SetCompact(result_3x);
+
+    // 3x хешрейт → target должен быть меньше (сложнее), чем 2x
+    BOOST_CHECK(target_3x < target_2x);
+}
+
 // ---------------------------------------------------------------------------
 // Existing proof-of-work validity tests — NOT modified.
 // ---------------------------------------------------------------------------
