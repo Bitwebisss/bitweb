@@ -27,6 +27,7 @@ import random
 import socket
 import time
 import unittest
+from argon2.low_level import hash_secret_raw, Type
 
 import argon2
 from test_framework.crypto.siphash import siphash256
@@ -769,6 +770,28 @@ class CBlockHeader:
     def hash_int(self):
         """Return block header hash as integer."""
         return uint256_from_str(hash256(self._serialize_header()))
+
+    @property
+    def argon2id(self):
+        """Argon2id PoW hash computed on-the-fly from the serialized 80-byte header.
+        Header bytes serve as BOTH password AND salt — mirrors GetArgon2idPoWHash() in block.cpp.
+        Parameters are consensus-critical (must not be changed):
+          t (time_cost)   = 3
+          m (memory_cost) = 1024 KiB  (ARGON2ID_MEM_COST_KB)
+          p (parallelism) = 1
+          hash_len        = 32 bytes
+        """
+        header_bytes = self._serialize_header()
+        digest = hash_secret_raw(
+            secret=header_bytes,
+            salt=header_bytes,  # same 80-byte header as salt, identical to C++
+            time_cost=3,
+            memory_cost=1024,   # KiB, matches ARGON2ID_MEM_COST_KB = 1024
+            parallelism=1,
+            hash_len=32,
+            type=Type.ID,
+        )
+        return uint256_from_str(digest)
 
     def __repr__(self):
         return "CBlockHeader(nVersion=%i hashPrevBlock=%064x hashMerkleRoot=%064x nTime=%s nBits=%08x nNonce=%08x)" \
