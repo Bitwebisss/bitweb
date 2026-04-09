@@ -39,9 +39,11 @@ class BitcoinChainstateTest(BitcoinTestFramework):
         datadir = node.cli.datadir
         
         # code to mine block for test , later possible replace with real 1 block.
-        node.setmocktime(int(time.time()))
         block_hash = node.generatetodescriptor(1, "raw(51)", called_by_framework=True)[0]
         block_one = node.getblock(block_hash, 0)
+        
+        # Откатываем блок — chainstate возвращается к genesis
+        node.invalidateblock(block_hash)
 
 
         node.stop_node()
