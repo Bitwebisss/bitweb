@@ -3,7 +3,6 @@
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-import time
 import subprocess
 
 from test_framework.test_framework import BitcoinTestFramework
@@ -37,15 +36,6 @@ class BitcoinChainstateTest(BitcoinTestFramework):
     def run_test(self):
         node = self.nodes[0]
         datadir = node.cli.datadir
-        
-        # code to mine block for test , later possible replace with real 1 block.
-        block_hash = node.generatetodescriptor(1, "raw(51)", called_by_framework=True)[0]
-        block_one = node.getblock(block_hash, 0)
-        
-        # Откатываем блок — chainstate возвращается к genesis
-        node.invalidateblock(block_hash)
-
-
         node.stop_node()
 
         self.log.info(f"Testing bitweb-chainstate {self.get_binaries().chainstate_argv()} with datadir: {datadir}")
