@@ -172,7 +172,7 @@ class GetblockstatsTest(BitcoinTestFramework):
 
         self.log.info('Test block height 0')
         genesis_stats = self.nodes[0].getblockstats(0)
-        assert_equal(genesis_stats["blockhash"], "6707420803956c6637e593b69492195f2d86d66c0126e7442f7139c52da7176c")
+        assert_equal(genesis_stats["blockhash"], "765828115ef756680e3441c813fd5272a8b8638ebd532ea610c44efa784cc1e9")
         assert_equal(genesis_stats["utxo_increase"], 1)
         assert_equal(genesis_stats["utxo_size_inc"], 117)
         assert_equal(genesis_stats["utxo_increase_actual"], 0)
