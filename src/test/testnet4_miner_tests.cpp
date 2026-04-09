@@ -1,15 +1,16 @@
 // Copyright (c) 2025 The Bitcoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
+#include <arith_uint256.h>
+#include <chain.h>
+#include <chainparams.h>
 #include <common/system.h>
 #include <interfaces/mining.h>
 #include <node/miner.h>
+#include <pow.h>
 #include <util/time.h>
 #include <validation.h>
-
 #include <test/util/setup_common.h>
-
 #include <boost/test/unit_test.hpp>
 
 using interfaces::BlockTemplate;
@@ -18,7 +19,6 @@ using node::BlockAssembler;
 using node::BlockWaitOptions;
 
 namespace testnet4_miner_tests {
-
 struct Testnet4MinerTestingSetup : public Testnet4Setup {
     std::unique_ptr<Mining> MakeMining()
     {
@@ -28,6 +28,10 @@ struct Testnet4MinerTestingSetup : public Testnet4Setup {
 } // namespace testnet4_miner_tests
 
 BOOST_FIXTURE_TEST_SUITE(testnet4_miner_tests, Testnet4MinerTestingSetup)
+
+// ===========================================================================
+// Mining interface test
+// ===========================================================================
 
 BOOST_AUTO_TEST_CASE(MiningInterface)
 {
@@ -75,6 +79,247 @@ BOOST_AUTO_TEST_CASE(MiningInterface)
     block_template = block_template->waitNext(wait_options);
     BOOST_REQUIRE(block_template);
     */
+}
+
+// ===========================================================================
+// LWMA-3 tests specific to Testnet4 (N=288, T=300)
+//
+// Testnet4 uses a smaller averaging window than mainnet:
+//   N = lwmaAveragingWindow = 288  (mainnet uses 576)
+//   T = nPowTargetSpacing   = 300 s
+//   k = N*(N+1)*T/2         = 12 484 800
+//
+// Smaller N means faster difficulty response (~1 day vs ~2 days on mainnet)
+// at the cost of slightly less stability. This is intentional for a test
+// network where hashrate is unpredictable.
+//
+// Bootstrap threshold L = N+1 = 289  (mainnet: 577)
+//   height <= 289 → return genesis nBits
+//   height   290  → first real LWMA computation
+//
+// All expected values verified by Python arith_uint256 simulation that
+// mirrors the exact integer arithmetic in Lwma3CalculateNextWorkRequired.
+//
+//   stable hashrate (height N+2 = 290)    : 0x1f0ffffeU
+//   spacing = 6T (solvetime cap)          : 0x1f0fffffU  (== powLimit)
+//   spacing = T/2 (2x hashrate)           : 0x1f07ffffU
+//   spacing = T/3 (3x hashrate)           : 0x1f055554U
+//   mixed (144 slow 2T + 144 fast T/2)    : 0x1f0e4562U
+// ===========================================================================
+
+// ---------------------------------------------------------------------------
+// Helper: build a chain of `count` blocks using testnet4 genesis timestamp.
+// ---------------------------------------------------------------------------
+static std::vector<CBlockIndex> BuildTestnet4Chain(int count, unsigned int nBits,
+                                                    int64_t t0, int64_t spacing)
+{
+    std::vector<CBlockIndex> blocks(count);
+    for (int i = 0; i < count; i++) {
+        blocks[i].pprev      = i ? &blocks[i - 1] : nullptr;
+        blocks[i].nHeight    = i;
+        blocks[i].nTime      = static_cast<uint32_t>(t0 + static_cast<int64_t>(i) * spacing);
+        blocks[i].nBits      = nBits;
+        blocks[i].nChainWork = i ? blocks[i - 1].nChainWork + GetBlockProof(blocks[i - 1])
+                                 : arith_uint256(0);
+    }
+    return blocks;
+}
+
+// ---------------------------------------------------------------------------
+// Test T4-1: Bootstrap boundary — N=288 means L=289, not 577.
+//   Any height <= 289 must return genesis nBits unchanged.
+//   Height 290 is the first real LWMA computation.
+//   This catches accidental changes to lwmaAveragingWindow in chainparams.
+// ---------------------------------------------------------------------------
+BOOST_AUTO_TEST_CASE(testnet4_lwma3_bootstrap)
+{
+    const auto chainParams = CreateChainParams(*m_node.args, ChainType::TESTNET4);
+    const auto& consensus  = chainParams->GetConsensus();
+    const int64_t N        = consensus.lwmaAveragingWindow;
+    const int64_t T        = consensus.nPowTargetSpacing;
+    const unsigned int genesisBits = chainParams->GenesisBlock().nBits;
+
+    // Verify we are actually testing N=288 and not some other value.
+    BOOST_REQUIRE_EQUAL(N, 288);
+
+    const int L = static_cast<int>(N + 1); // 289
+    auto blocks = BuildTestnet4Chain(L + 1, genesisBits, 1775674814, T);
+
+    // Boundary: height L=289 still on bootstrap path.
+    BOOST_CHECK_EQUAL(GetNextWorkRequired(&blocks[L], nullptr, consensus), genesisBits);
+    // Interior heights also bootstrap.
+    BOOST_CHECK_EQUAL(GetNextWorkRequired(&blocks[1],     nullptr, consensus), genesisBits);
+    BOOST_CHECK_EQUAL(GetNextWorkRequired(&blocks[N / 2], nullptr, consensus), genesisBits);
+}
+
+// ---------------------------------------------------------------------------
+// Test T4-2: First real LWMA-3 result at height N+2 = 290.
+//   All N=288 window blocks carry genesisBits at ideal spacing T.
+//   Expected: 0x1f0ffffeU.
+// ---------------------------------------------------------------------------
+BOOST_AUTO_TEST_CASE(testnet4_lwma3_stable_hashrate)
+{
+    const auto chainParams = CreateChainParams(*m_node.args, ChainType::TESTNET4);
+    const auto& consensus  = chainParams->GetConsensus();
+    const int64_t N        = consensus.lwmaAveragingWindow; // 288
+    const int64_t T        = consensus.nPowTargetSpacing;   // 300
+    const unsigned int genesisBits = chainParams->GenesisBlock().nBits;
+    const arith_uint256 powLimit   = UintToArith256(consensus.powLimit);
+
+    const int lwma_height = static_cast<int>(N + 2); // 290
+    auto blocks = BuildTestnet4Chain(lwma_height + 1, genesisBits, 1775674814, T);
+
+    const unsigned int expected_nbits = 0x1f0ffffeU;
+    unsigned int result = GetNextWorkRequired(&blocks[lwma_height], nullptr, consensus);
+    BOOST_CHECK_EQUAL(result, expected_nbits);
+
+    arith_uint256 resultTarget;
+    resultTarget.SetCompact(result);
+    BOOST_CHECK(resultTarget <= powLimit);
+}
+
+// ---------------------------------------------------------------------------
+// Test T4-3: Rounding error must NOT accumulate across successive blocks.
+//   Every block from height N+3 = 291 onward must stay at 0x1f0ffffeU.
+// ---------------------------------------------------------------------------
+BOOST_AUTO_TEST_CASE(testnet4_lwma3_no_drift)
+{
+    const auto chainParams = CreateChainParams(*m_node.args, ChainType::TESTNET4);
+    const auto& consensus  = chainParams->GetConsensus();
+    const int64_t N        = consensus.lwmaAveragingWindow; // 288
+    const int64_t T        = consensus.nPowTargetSpacing;   // 300
+    const unsigned int genesisBits = chainParams->GenesisBlock().nBits;
+
+    const int EXTRA     = 8;
+    const int chain_len = static_cast<int>(N + 3 + EXTRA); // 299
+    auto blocks = BuildTestnet4Chain(chain_len, genesisBits, 1775674814, T);
+
+    for (int h = static_cast<int>(N + 3); h < chain_len; h++) {
+        blocks[h].nBits = GetNextWorkRequired(&blocks[h - 1], nullptr, consensus);
+    }
+
+    const unsigned int expected_nbits = 0x1f0ffffeU;
+    for (int h = static_cast<int>(N + 3); h < chain_len; h++) {
+        BOOST_CHECK_EQUAL(blocks[h].nBits, expected_nbits);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Test T4-4: powLimit cap — spacing >= 6T must clamp to powLimit.
+//   Expected: 0x1f0fffffU.
+// ---------------------------------------------------------------------------
+BOOST_AUTO_TEST_CASE(testnet4_lwma3_powlimit_cap)
+{
+    const auto chainParams = CreateChainParams(*m_node.args, ChainType::TESTNET4);
+    const auto& consensus  = chainParams->GetConsensus();
+    const int64_t N        = consensus.lwmaAveragingWindow; // 288
+    const int64_t T        = consensus.nPowTargetSpacing;   // 300
+    const unsigned int genesisBits  = chainParams->GenesisBlock().nBits;
+    const unsigned int powLimitBits = UintToArith256(consensus.powLimit).GetCompact();
+
+    const int lwma_height = static_cast<int>(N + 2);
+    auto blocks = BuildTestnet4Chain(lwma_height + 1, genesisBits, 1775674814, 6 * T);
+
+    unsigned int result = GetNextWorkRequired(&blocks[lwma_height], nullptr, consensus);
+    BOOST_CHECK_EQUAL(result, 0x1f0fffffU);
+    BOOST_CHECK_EQUAL(result, powLimitBits);
+}
+
+// ---------------------------------------------------------------------------
+// Test T4-5: Doubled hashrate — spacing T/2 must raise difficulty.
+//   Expected: 0x1f07ffffU.
+// ---------------------------------------------------------------------------
+BOOST_AUTO_TEST_CASE(testnet4_lwma3_double_hashrate)
+{
+    const auto chainParams = CreateChainParams(*m_node.args, ChainType::TESTNET4);
+    const auto& consensus  = chainParams->GetConsensus();
+    const int64_t N        = consensus.lwmaAveragingWindow; // 288
+    const int64_t T        = consensus.nPowTargetSpacing;   // 300
+    const unsigned int genesisBits = chainParams->GenesisBlock().nBits;
+    const arith_uint256 powLimit   = UintToArith256(consensus.powLimit);
+
+    const int lwma_height = static_cast<int>(N + 2);
+    auto blocks = BuildTestnet4Chain(lwma_height + 1, genesisBits, 1775674814, T / 2);
+
+    unsigned int result = GetNextWorkRequired(&blocks[lwma_height], nullptr, consensus);
+    BOOST_CHECK_EQUAL(result, 0x1f07ffffU);
+
+    arith_uint256 resultTarget;
+    resultTarget.SetCompact(result);
+    BOOST_CHECK(resultTarget < powLimit);
+}
+
+// ---------------------------------------------------------------------------
+// Test T4-6: Monotonicity — 3x hashrate must produce harder target than 2x.
+//   spacing T/2 → 0x1f07ffffU
+//   spacing T/3 → 0x1f055554U
+// ---------------------------------------------------------------------------
+BOOST_AUTO_TEST_CASE(testnet4_lwma3_monotone_difficulty)
+{
+    const auto chainParams = CreateChainParams(*m_node.args, ChainType::TESTNET4);
+    const auto& consensus  = chainParams->GetConsensus();
+    const int64_t N = consensus.lwmaAveragingWindow; // 288
+    const int64_t T = consensus.nPowTargetSpacing;   // 300
+    const unsigned int genesisBits = chainParams->GenesisBlock().nBits;
+    const int lwma_height = static_cast<int>(N + 2);
+
+    auto blocks_2x = BuildTestnet4Chain(lwma_height + 1, genesisBits, 1775674814, T / 2);
+    auto blocks_3x = BuildTestnet4Chain(lwma_height + 1, genesisBits, 1775674814, T / 3);
+
+    unsigned int result_2x = GetNextWorkRequired(&blocks_2x[lwma_height], nullptr, consensus);
+    unsigned int result_3x = GetNextWorkRequired(&blocks_3x[lwma_height], nullptr, consensus);
+
+    BOOST_CHECK_EQUAL(result_2x, 0x1f07ffffU);
+    BOOST_CHECK_EQUAL(result_3x, 0x1f055554U);
+
+    arith_uint256 target_2x, target_3x;
+    target_2x.SetCompact(result_2x);
+    target_3x.SetCompact(result_3x);
+    BOOST_CHECK(target_3x < target_2x);
+}
+
+// ---------------------------------------------------------------------------
+// Test T4-7: Mixed-spacing determinism — regression guard for N=288.
+//   Window split: first HALF=144 blocks at 2T, last HALF=144 at T/2.
+//   Expected: 0x1f0e4562U (verified by Python arith_uint256 simulation).
+//
+//   Any change to loop weights, timestamp clamping, or accumulator arithmetic
+//   will produce a different value and fail this test.
+// ---------------------------------------------------------------------------
+BOOST_AUTO_TEST_CASE(testnet4_lwma3_mixed_solvetimes_determinism)
+{
+    const auto chainParams = CreateChainParams(*m_node.args, ChainType::TESTNET4);
+    const auto& consensus  = chainParams->GetConsensus();
+    const int64_t N        = consensus.lwmaAveragingWindow; // 288
+    const int64_t T        = consensus.nPowTargetSpacing;   // 300
+    const unsigned int genesisBits = chainParams->GenesisBlock().nBits;
+    const arith_uint256 powLimit   = UintToArith256(consensus.powLimit);
+
+    const int HALF      = static_cast<int>(N / 2); // 144
+    const int chain_len = static_cast<int>(N + 3); // 291
+    std::vector<CBlockIndex> blocks(chain_len);
+
+    int64_t ts = 1775674814;
+    for (int i = 0; i < chain_len; i++) {
+        blocks[i].pprev      = i ? &blocks[i - 1] : nullptr;
+        blocks[i].nHeight    = i;
+        blocks[i].nBits      = genesisBits;
+        blocks[i].nTime      = static_cast<uint32_t>(ts);
+        blocks[i].nChainWork = i ? blocks[i - 1].nChainWork + GetBlockProof(blocks[i - 1])
+                                 : arith_uint256(0);
+        if      (i < 3)          ts += T;
+        else if (i < 3 + HALF)   ts += 2 * T;
+        else                     ts += T / 2;
+    }
+
+    const unsigned int expected_nbits = 0x1f0e4562U;
+    unsigned int result = GetNextWorkRequired(&blocks[chain_len - 1], nullptr, consensus);
+    BOOST_CHECK_EQUAL(result, expected_nbits);
+
+    arith_uint256 resultTarget;
+    resultTarget.SetCompact(result);
+    BOOST_CHECK(resultTarget <= powLimit);
+    BOOST_CHECK(resultTarget > arith_uint256(0));
 }
 
 BOOST_AUTO_TEST_SUITE_END()
