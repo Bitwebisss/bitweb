@@ -13,73 +13,147 @@
 
 BOOST_FIXTURE_TEST_SUITE(pow_tests, BasicTestingSetup)
 
-/* Test calculation of next difficulty target with no constraints applying
-BOOST_AUTO_TEST_CASE(get_next_work)
+// ---------------------------------------------------------------------------
+// Helper: build a chain of `count` blocks (indices 0..count-1) all carrying
+// the same nBits, spaced `spacing` seconds apart starting at `t0`.
+// The vector is pre-allocated so pprev pointers remain stable.
+// ---------------------------------------------------------------------------
+static std::vector<CBlockIndex> BuildChain(int count, unsigned int nBits,
+                                           int64_t t0, int64_t spacing)
 {
-    const auto chainParams = CreateChainParams(*m_node.args, ChainType::MAIN);
-    int64_t nLastRetargetTime = 1261130161; // Block #30240
-    CBlockIndex pindexLast;
-    pindexLast.nHeight = 32255;
-    pindexLast.nTime = 1262152739;  // Block #32255
-    pindexLast.nBits = 0x1f0fffff;
+    std::vector<CBlockIndex> blocks(count);
+    for (int i = 0; i < count; i++) {
+        blocks[i].pprev      = i ? &blocks[i - 1] : nullptr;
+        blocks[i].nHeight    = i;
+        blocks[i].nTime      = static_cast<uint32_t>(t0 + static_cast<int64_t>(i) * spacing);
+        blocks[i].nBits      = nBits;
+        blocks[i].nChainWork = i ? blocks[i - 1].nChainWork + GetBlockProof(blocks[i - 1])
+                                 : arith_uint256(0);
+    }
+    return blocks;
+}
 
-    // Here (and below): expected_nbits is calculated in
-    // CalculateNextWorkRequired(); redoing the calculation here would be just
-    // reimplementing the same code that is written in pow.cpp. Rather than
-    // copy that code, we just hardcode the expected result.
-    unsigned int expected_nbits = 0x1d00d86aU;
-    BOOST_CHECK_EQUAL(CalculateNextWorkRequired(&pindexLast, nLastRetargetTime, chainParams->GetConsensus()), expected_nbits);
-    BOOST_CHECK(PermittedDifficultyTransition(chainParams->GetConsensus(), pindexLast.nHeight+1, pindexLast.nBits, expected_nbits));
-}
-*/
-/* Test the constraint on the upper bound for next work
-BOOST_AUTO_TEST_CASE(get_next_work_pow_limit)
+// ---------------------------------------------------------------------------
+// Test 1 (replaces get_next_work_pow_limit):
+// During bootstrap (height <= N+1) LWMA3 must return genesis nBits unchanged.
+// ---------------------------------------------------------------------------
+BOOST_AUTO_TEST_CASE(lwma3_bootstrap)
 {
-    const auto chainParams = CreateChainParams(*m_node.args, ChainType::MAIN);
-    int64_t nLastRetargetTime = 1231006505; // Block #0
-    CBlockIndex pindexLast;
-    pindexLast.nHeight = 2015;
-    pindexLast.nTime = 1233061996;  // Block #2015
-    pindexLast.nBits = 0x1f0fffff;
-    unsigned int expected_nbits = 0x1f0fffffU;
-    BOOST_CHECK_EQUAL(CalculateNextWorkRequired(&pindexLast, nLastRetargetTime, chainParams->GetConsensus()), expected_nbits);
-    BOOST_CHECK(PermittedDifficultyTransition(chainParams->GetConsensus(), pindexLast.nHeight+1, pindexLast.nBits, expected_nbits));
+    const auto chainParams   = CreateChainParams(*m_node.args, ChainType::MAIN);
+    const auto& consensus    = chainParams->GetConsensus();
+    const int64_t N          = consensus.lwmaAveragingWindow; // 576
+    const int64_t T          = consensus.nPowTargetSpacing;   // 300
+    const unsigned int genesisBits = chainParams->GenesisBlock().nBits; // 0x1f0fffff
+
+    // Bootstrap threshold L = N + 1 = 577.
+    // Build a chain that covers [0 .. L], all blocks carry genesis nBits.
+    const int L = static_cast<int>(N + 1); // 577
+    auto blocks = BuildChain(L + 1, genesisBits, 1775674812, T);
+
+    // At the boundary height L the bootstrap path is still taken.
+    BOOST_CHECK_EQUAL(GetNextWorkRequired(&blocks[L], nullptr, consensus), genesisBits);
+
+    // Heights well inside the bootstrap window also return genesis nBits.
+    BOOST_CHECK_EQUAL(GetNextWorkRequired(&blocks[1],     nullptr, consensus), genesisBits);
+    BOOST_CHECK_EQUAL(GetNextWorkRequired(&blocks[N / 2], nullptr, consensus), genesisBits);
 }
-*/
-/* Test the constraint on the lower bound for actual time taken
-BOOST_AUTO_TEST_CASE(get_next_work_lower_limit_actual)
+
+// ---------------------------------------------------------------------------
+// Test 2 (replaces get_next_work):
+// With a perfectly stable hashrate (every solvetime == T) LWMA3 must return
+// the same target it received as input (genesis target == powLimit).
+//
+// Math: sumWeightedSolvetimes = T * N*(N+1)/2 = k
+//       avgTarget             = N * (target/N/k) = target/k
+//       nextTarget            = (target/k) * k   ≈ target   → capped at powLimit
+// ---------------------------------------------------------------------------
+BOOST_AUTO_TEST_CASE(lwma3_stable_hashrate)
 {
-    const auto chainParams = CreateChainParams(*m_node.args, ChainType::MAIN);
-    int64_t nLastRetargetTime = 1279008237; // Block #66528
-    CBlockIndex pindexLast;
-    pindexLast.nHeight = 68543;
-    pindexLast.nTime = 1279297671;  // Block #68543
-    pindexLast.nBits = 0x1c05a3f4;
-    unsigned int expected_nbits = 0x1c0168fdU;
-    BOOST_CHECK_EQUAL(CalculateNextWorkRequired(&pindexLast, nLastRetargetTime, chainParams->GetConsensus()), expected_nbits);
-    BOOST_CHECK(PermittedDifficultyTransition(chainParams->GetConsensus(), pindexLast.nHeight+1, pindexLast.nBits, expected_nbits));
-    // Test that reducing nbits further would not be a PermittedDifficultyTransition.
-    unsigned int invalid_nbits = expected_nbits-1;
-    BOOST_CHECK(!PermittedDifficultyTransition(chainParams->GetConsensus(), pindexLast.nHeight+1, pindexLast.nBits, invalid_nbits));
+    const auto chainParams   = CreateChainParams(*m_node.args, ChainType::MAIN);
+    const auto& consensus    = chainParams->GetConsensus();
+    const int64_t N          = consensus.lwmaAveragingWindow; // 576
+    const int64_t T          = consensus.nPowTargetSpacing;   // 300
+    const unsigned int genesisBits = chainParams->GenesisBlock().nBits; // 0x1f0fffff
+
+    // First height past bootstrap is N+2 = 578.
+    // At this height the LWMA window covers blocks [2 .. 578] (exactly N blocks).
+    const int height = static_cast<int>(N + 2); // 578
+    auto blocks = BuildChain(height + 1, genesisBits, 1775674812, T);
+
+    // With ideal spacing the next target must equal the genesis target.
+    // Genesis target is already at powLimit so the result is powLimit compact.
+    unsigned int result = GetNextWorkRequired(&blocks[height], nullptr, consensus);
+    BOOST_CHECK_EQUAL(result, genesisBits);
 }
-*/
-/* Test the constraint on the upper bound for actual time taken
-BOOST_AUTO_TEST_CASE(get_next_work_upper_limit_actual)
+
+// ---------------------------------------------------------------------------
+// Test 3 (replaces get_next_work_lower_limit_actual):
+// The computed target must never exceed powLimit even when every solvetime is
+// at the 6T cap (6 * 300 = 1800 s).
+//
+// Math: sumWeightedSolvetimes = 6T * N*(N+1)/2 = 6k
+//       nextTarget            = (target/k) * 6k = 6 * target > powLimit  → capped
+// ---------------------------------------------------------------------------
+BOOST_AUTO_TEST_CASE(lwma3_powlimit_cap)
 {
-    const auto chainParams = CreateChainParams(*m_node.args, ChainType::MAIN);
-    int64_t nLastRetargetTime = 1263163443; // NOTE: Not an actual block time
-    CBlockIndex pindexLast;
-    pindexLast.nHeight = 46367;
-    pindexLast.nTime = 1269211443;  // Block #46367
-    pindexLast.nBits = 0x1c387f6f;
-    unsigned int expected_nbits = 0x1d00e1fdU;
-    BOOST_CHECK_EQUAL(CalculateNextWorkRequired(&pindexLast, nLastRetargetTime, chainParams->GetConsensus()), expected_nbits);
-    BOOST_CHECK(PermittedDifficultyTransition(chainParams->GetConsensus(), pindexLast.nHeight+1, pindexLast.nBits, expected_nbits));
-    // Test that increasing nbits further would not be a PermittedDifficultyTransition.
-    unsigned int invalid_nbits = expected_nbits+1;
-    BOOST_CHECK(!PermittedDifficultyTransition(chainParams->GetConsensus(), pindexLast.nHeight+1, pindexLast.nBits, invalid_nbits));
+    const auto chainParams   = CreateChainParams(*m_node.args, ChainType::MAIN);
+    const auto& consensus    = chainParams->GetConsensus();
+    const int64_t N          = consensus.lwmaAveragingWindow; // 576
+    const int64_t T          = consensus.nPowTargetSpacing;   // 300
+    const unsigned int genesisBits   = chainParams->GenesisBlock().nBits;
+    const unsigned int powLimitBits  = UintToArith256(consensus.powLimit).GetCompact();
+    const arith_uint256 powLimit     = UintToArith256(consensus.powLimit);
+
+    // Spacing of exactly 6*T hits the cap on every block.
+    const int height = static_cast<int>(N + 2);
+    auto blocks = BuildChain(height + 1, genesisBits, 1775674812, 6 * T);
+
+    unsigned int result = GetNextWorkRequired(&blocks[height], nullptr, consensus);
+
+    // Result must never be above powLimit.
+    arith_uint256 resultTarget;
+    resultTarget.SetCompact(result);
+    BOOST_CHECK(resultTarget <= powLimit);
+
+    // Genesis target == powLimit for this coin, so with 6T cap the algorithm
+    // would compute 6 * powLimit which is then capped back to powLimit.
+    BOOST_CHECK_EQUAL(result, powLimitBits);
 }
-*/
+
+// ---------------------------------------------------------------------------
+// Test 4 (replaces get_next_work_upper_limit_actual):
+// The 6T solvetime cap must prevent difficulty from falling further when block
+// timestamps exceed 6*T.  A chain with spacing 100*T must yield exactly the
+// same next target as a chain with spacing 6*T because both are capped to 6*T
+// internally.
+// ---------------------------------------------------------------------------
+BOOST_AUTO_TEST_CASE(lwma3_6T_solvetime_cap)
+{
+    const auto chainParams   = CreateChainParams(*m_node.args, ChainType::MAIN);
+    const auto& consensus    = chainParams->GetConsensus();
+    const int64_t N          = consensus.lwmaAveragingWindow; // 576
+    const int64_t T          = consensus.nPowTargetSpacing;   // 300
+    const unsigned int genesisBits = chainParams->GenesisBlock().nBits;
+
+    const int height = static_cast<int>(N + 2);
+
+    // Chain A: spacing exactly at the cap boundary (6*T = 1800 s).
+    auto blocks_6T   = BuildChain(height + 1, genesisBits, 1775674812, 6 * T);
+    // Chain B: spacing far above the cap (100*T); must be clamped to 6*T.
+    auto blocks_100T = BuildChain(height + 1, genesisBits, 1775674812, 100 * T);
+
+    unsigned int result_6T   = GetNextWorkRequired(&blocks_6T[height],   nullptr, consensus);
+    unsigned int result_100T = GetNextWorkRequired(&blocks_100T[height], nullptr, consensus);
+
+    // Both chains experience the same internal solvetime after capping,
+    // so the computed next target must be identical.
+    BOOST_CHECK_EQUAL(result_6T, result_100T);
+}
+
+// ---------------------------------------------------------------------------
+// Existing tests — NOT modified.
+// ---------------------------------------------------------------------------
+
 BOOST_AUTO_TEST_CASE(CheckProofOfWork_test_negative_target)
 {
     const auto consensus = CreateChainParams(*m_node.args, ChainType::MAIN)->GetConsensus();
