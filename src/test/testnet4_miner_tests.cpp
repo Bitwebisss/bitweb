@@ -104,7 +104,7 @@ BOOST_AUTO_TEST_CASE(MiningInterface)
 //   spacing = 6T (solvetime cap)          : 0x1f0fffffU  (== powLimit)
 //   spacing = T/2 (2x hashrate)           : 0x1f07ffffU
 //   spacing = T/3 (3x hashrate)           : 0x1f055554U
-//   mixed (144 slow 2T + 144 fast T/2)    : 0x1f0e4562U
+//   mixed (144 slow 2T + 144 fast T/2)    : 0x1f0e1a9eU
 // ===========================================================================
 
 // ---------------------------------------------------------------------------
@@ -281,7 +281,7 @@ BOOST_AUTO_TEST_CASE(testnet4_lwma3_monotone_difficulty)
 // ---------------------------------------------------------------------------
 // Test T4-7: Mixed-spacing determinism — regression guard for N=288.
 //   Window split: first HALF=144 blocks at 2T, last HALF=144 at T/2.
-//   Expected: 0x1f0e4562U (verified by Python arith_uint256 simulation).
+//   Expected: 0x1f0e1a9eU (verified by Python arith_uint256 simulation).
 //
 //   Any change to loop weights, timestamp clamping, or accumulator arithmetic
 //   will produce a different value and fail this test.
