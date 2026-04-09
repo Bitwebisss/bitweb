@@ -461,7 +461,7 @@ BOOST_AUTO_TEST_CASE(lwma3_testnet_runs_lwma)
         const arith_uint256 powLimit    = UintToArith256(consensus.powLimit);
 
         const int lwma_height = static_cast<int>(N + 2);
-        auto blocks = BuildChain(lwma_height + 1, genesisBits, 1775674813, T);
+        auto blocks = BuildChain(lwma_height + 1, genesisBits, 1762681892, T);
 
         // Past bootstrap threshold: LWMA runs and result differs from powLimit
         // by exactly 1 compact LSB (same truncation behaviour as mainnet).
@@ -477,7 +477,7 @@ BOOST_AUTO_TEST_CASE(lwma3_testnet_runs_lwma)
         // Bootstrap path must still work on testnets:
         // height <= L = N+1 returns genesis nBits unchanged.
         const int L = static_cast<int>(N + 1);
-        auto bootstrap_blocks = BuildChain(L + 1, genesisBits, 1775674813, T);
+        auto bootstrap_blocks = BuildChain(L + 1, genesisBits, 1762681892, T);
         unsigned int bootstrap_result = GetNextWorkRequired(&bootstrap_blocks[L], nullptr, consensus);
         BOOST_CHECK_EQUAL(bootstrap_result, genesisBits);
     };
