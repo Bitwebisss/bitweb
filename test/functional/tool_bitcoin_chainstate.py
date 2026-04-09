@@ -3,6 +3,7 @@
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+import time
 import subprocess
 
 from test_framework.test_framework import BitcoinTestFramework
@@ -38,6 +39,7 @@ class BitcoinChainstateTest(BitcoinTestFramework):
         datadir = node.cli.datadir
         
         # code to mine block for test , later possible replace with real 1 block.
+        node.setmocktime(int(time.time()))
         block_hash = node.generatetodescriptor(1, "raw(51)", called_by_framework=True)[0]
         block_one = node.getblock(block_hash, 0)
 
