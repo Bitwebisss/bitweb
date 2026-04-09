@@ -15,6 +15,12 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHead
 {
     assert(pindexLast != nullptr);
 
+    if (params.fPowNoRetargeting)
+        return pindexLast->nBits;
+
+    if (params.fPowAllowMinDifficultyBlocks)
+        return UintToArith256(params.powLimit).GetCompact();
+
     /*
     unsigned int nProofOfWorkLimit = UintToArith256(params.powLimit).GetCompact();
 
@@ -113,40 +119,46 @@ unsigned int Lwma3CalculateNextWorkRequired(const CBlockIndex* pindexLast, const
 {
     const int64_t T = params.nPowTargetSpacing;
 
-  // For T=600 use N=288 (takes 2 days to fully respond to hashrate changes) and has 
-  //  a StdDev of N^(-0.5) which will often be the change in difficulty in N/4 blocks when hashrate is 
-  // constant. 10% of blocks will have an error >2x the StdDev above or below where D should be. 
-  //  This N=288 is like N=144 in ASERT which is N=144*ln(2)=100 in 
-  // terms of BCH's ASERT.  BCH's ASERT uses N=288 which is like 2*288/ln(2) = 831 = N for 
-  // LWMA. ASERT and LWMA are almost indistinguishable once this adjustment to N is used. In other words,
-  // 831/144 = 5.8 means my N=144 recommendation for T=600 is 5.8 times faster but SQRT(5.8) less 
-  // stability than BCH's ASERT. The StdDev for 288 is 6%, so 12% accidental variation will be see in 10% of blocks.
-  // Twice 288 is 576 which will have 4.2% StdDev and be 2x slower. This is reasonable for T=300 or less.
-  // For T = 60, N=1,000 will have 3% StdDev & maybe plenty fast, but require 1M multiplications & additions per 
-  // 1,000 blocks for validation which might be a consideration. I would not go over N=576 and prefer 360
-  // so that it can respond in 6 hours to hashrate changes.
+    // For T=600 use N=288 (takes 2 days to fully respond to hashrate changes) and has 
+    //  a StdDev of N^(-0.5) which will often be the change in difficulty in N/4 blocks when hashrate is 
+    // constant. 10% of blocks will have an error >2x the StdDev above or below where D should be. 
+    //  This N=288 is like N=144 in ASERT which is N=144*ln(2)=100 in 
+    // terms of BCH's ASERT.  BCH's ASERT uses N=288 which is like 2*288/ln(2) = 831 = N for 
+    // LWMA. ASERT and LWMA are almost indistinguishable once this adjustment to N is used. In other words,
+    // 831/144 = 5.8 means my N=144 recommendation for T=600 is 5.8 times faster but SQRT(5.8) less 
+    // stability than BCH's ASERT. The StdDev for 288 is 6%, so 12% accidental variation will be see in 10% of blocks.
+    // Twice 288 is 576 which will have 4.2% StdDev and be 2x slower. This is reasonable for T=300 or less.
+    // For T = 60, N=1,000 will have 3% StdDev & maybe plenty fast, but require 1M multiplications & additions per 
+    // 1,000 blocks for validation which might be a consideration. I would not go over N=576 and prefer 360
+    // so that it can respond in 6 hours to hashrate changes.
 
     const int64_t N = params.lwmaAveragingWindow;
-	
-	// Low diff blocks for diff initiation.
-	const int64_t L = N + 1;
+
+    // Low diff blocks for diff initiation.
+    const int64_t L = N + 1;
 
     // Define a k that will be used to get a proper average after weighting the solvetimes.
-    const int64_t k = N * (N + 1) * T / 2; 
+    const int64_t k = N * (N + 1) * T / 2;
 
     const int64_t height = pindexLast->nHeight;
     const arith_uint256 powLimit = UintToArith256(params.powLimit);
     
    // New coins just "give away" first N blocks. It's better to guess
    // this value instead of using powLimit, but err on high side to not get stuck.
-    if (params.fPowAllowMinDifficultyBlocks) { return powLimit.GetCompact(); }
-    if (height <= L) { return powLimit.GetCompact(); }
+    if (height <= L) {
+        const CBlockIndex* genesis = pindexLast->GetAncestor(0);
+        assert(genesis != nullptr);
+        return genesis->nBits;
+    }
+
+    assert(height - N >= 0);
 
     arith_uint256 avgTarget, nextTarget;
     int64_t thisTimestamp, previousTimestamp;
     int64_t sumWeightedSolvetimes = 0, j = 0;
 
     const CBlockIndex* blockPreviousTimestamp = pindexLast->GetAncestor(height - N);
+    assert(blockPreviousTimestamp != nullptr);
     previousTimestamp = blockPreviousTimestamp->GetBlockTime();
 
     // Loop through N most recent blocks. 
@@ -156,24 +168,24 @@ unsigned int Lwma3CalculateNextWorkRequired(const CBlockIndex* pindexLast, const
         // Prevent solvetimes from being negative in a safe way. It must be done like this. 
         // Do not attempt anything like  if (solvetime < 1) {solvetime=1;}
         // The +1 ensures new coins do not calculate nextTarget = 0.
-        thisTimestamp = (block->GetBlockTime() > previousTimestamp) ? 
+        thisTimestamp = (block->GetBlockTime() > previousTimestamp) ?
                             block->GetBlockTime() : previousTimestamp + 1;
 
-       // 6*T limit prevents large drops in diff from long solvetimes which would cause oscillations.
+        // 6*T limit prevents large drops in diff from long solvetimes which would cause oscillations.
         int64_t solvetime = std::min(6 * T, thisTimestamp - previousTimestamp);
 
-       // The following is part of "preventing negative solvetimes". 
+        // The following is part of "preventing negative solvetimes". 
         previousTimestamp = thisTimestamp;
-       
-       // Give linearly higher weight to more recent solvetimes.
+
+        // Give linearly higher weight to more recent solvetimes.
         j++;
-        sumWeightedSolvetimes += solvetime * j; 
+        sumWeightedSolvetimes += solvetime * j;
 
         arith_uint256 target;
         target.SetCompact(block->nBits);
         avgTarget += target / N / k; // Dividing by k here prevents an overflow below.
     }
-    nextTarget = avgTarget * sumWeightedSolvetimes; 
+    nextTarget = avgTarget * sumWeightedSolvetimes;
 
     if (nextTarget > powLimit) { nextTarget = powLimit; }
 
