@@ -38,8 +38,9 @@ class BitcoinChainstateTest(BitcoinTestFramework):
         datadir = node.cli.datadir
         
         # code to mine block for test , later possible replace with real 1 block.
-        block_hash = self.generate(node, 1)[0]
-        block_one = node.getblock(block_hash, 0)  # verbosity=0 → raw hex
+        address = node.getnewaddress()
+        block_hash = node.generatetoaddress(1, address, called_by_framework=True)[0]
+        block_one = node.getblock(block_hash, 0)
 
         node.stop_node()
 
