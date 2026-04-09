@@ -289,7 +289,7 @@ if __name__ == '__main__':
     if 'netmagic' not in settings:
         settings['netmagic'] = 'feaed5ca'
     if 'genesis' not in settings:
-        settings['genesis'] = 'b1a28d2ec50d89a66d12c593a38c4a8e902fc75bf4ba52fc40d8b37425efbbc0'
+        settings['genesis'] = 'cd0354f7b40ce9aff0b6141e6572e782e6ac2671063bd6858984c839fe33000a'
     if 'input' not in settings:
         settings['input'] = 'input'
     if 'hashlist' not in settings:
