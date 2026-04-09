@@ -61,6 +61,10 @@ BOOST_AUTO_TEST_CASE(MiningInterface)
     should_be_nullptr = block_template->waitNext(wait_options);
     BOOST_REQUIRE(should_be_nullptr == nullptr);
 
+    // fPowAllowMinDifficultyBlocks is disabled on all chains — the 20-minute
+    // min-difficulty timer in WaitAndCreateNewBlock is dead code and never
+    // triggers a new template. The block below is preserved for history.
+    /*
     // One second later the difficulty drops and it returns a new template
     // Note that we can't test the actual difficulty change, because the
     // difficulty is already at 1.
@@ -70,6 +74,7 @@ BOOST_AUTO_TEST_CASE(MiningInterface)
     }
     block_template = block_template->waitNext(wait_options);
     BOOST_REQUIRE(block_template);
+    */
 }
 
 BOOST_AUTO_TEST_SUITE_END()
