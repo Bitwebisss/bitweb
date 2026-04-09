@@ -22,7 +22,7 @@ BOOST_FIXTURE_TEST_SUITE(pow_tests, BasicTestingSetup)
 // BTC's retarget formula:
 //   bnNew = bnLast * actualTimespan / targetTimespan
 // At ideal hashrate: actualTimespan == targetTimespan → bnNew == bnLast exactly.
-// No accumulation of integer-division error because it is a single multiply + divide.
+// No accumulation of integer-division error because it is a single multiply+divide.
 //
 // LWMA-3 accumulates N=576 iterations of (target / N / k), which introduces
 // a systematic rounding loss that does NOT exist in the BTC formula.
@@ -129,9 +129,6 @@ BOOST_AUTO_TEST_CASE(get_next_work_upper_limit_actual)
 //   The target moves DOWN (harder) from powLimit.
 //   0x1f0ffffe < 0x1f0fffff → slightly harder target → CheckProofOfWork
 //   still accepts it because target < powLimit (not above it).
-//   Miners at powLimit difficulty succeed with probability 1 - 10^-7 %,
-//   effectively identical to mining at powLimit itself.
-//
 //   Genesis block nBits is hardcoded and is never touched by LWMA-3.
 //   Bootstrap blocks (height <= 577) also return genesis nBits unchanged.
 //
@@ -140,6 +137,18 @@ BOOST_AUTO_TEST_CASE(get_next_work_upper_limit_actual)
 //   No. The chain stabilises at 0x1f0ffffe from the second post-bootstrap
 //   block and stays there indefinitely at constant hashrate. Test 3
 //   (lwma3_stable_hashrate_no_drift) verifies this in C++.
+//
+// ── Which chain types run LWMA-3? ────────────────────────────────────────
+//
+//   GetNextWorkRequired() routes through three branches in order:
+//     1. fPowNoRetargeting == true  → return pindexLast->nBits   (REGTEST)
+//     2. fPowAllowMinDifficultyBlocks == true → return powLimit  (TESTNET, TESTNET4)
+//     3. Lwma3CalculateNextWorkRequired()                        (MAIN, SIGNET)
+//
+//   Consequence: lwmaAveragingWindow (N) is dead code for REGTEST, TESTNET,
+//   and TESTNET4.  Changing N in those chains has no observable effect.
+//   Only MAIN and SIGNET run the full LWMA-3 loop; N=576 matters there.
+//   There is no reason to set a smaller N for REGTEST — LWMA never runs there.
 //
 // ── Hardcoded expected values (verified by Python arith_uint256 simulation)
 //
@@ -207,7 +216,6 @@ BOOST_AUTO_TEST_CASE(lwma3_bootstrap)
 //   Expected result: 0x1f0ffffeU — one compact LSB below genesisBits.
 //   This is caused by the systematic truncation in (target / N / k) × N
 //   iterations; the absolute error is ~10^10, negligible for mining.
-//   See the section header above for a full explanation.
 // ---------------------------------------------------------------------------
 BOOST_AUTO_TEST_CASE(lwma3_stable_hashrate)
 {
@@ -219,7 +227,6 @@ BOOST_AUTO_TEST_CASE(lwma3_stable_hashrate)
     const arith_uint256 powLimit   = UintToArith256(consensus.powLimit);
 
     // Chain length N+3 = 579: heights 0..578, pindexLast = blocks[578].
-    // height 578 = N+2 > L=577 → first real LWMA computation.
     const int lwma_height = static_cast<int>(N + 2); // 578
     auto blocks = BuildChain(lwma_height + 1, genesisBits, 1775674812, T);
 
@@ -227,7 +234,7 @@ BOOST_AUTO_TEST_CASE(lwma3_stable_hashrate)
     unsigned int result = GetNextWorkRequired(&blocks[lwma_height], nullptr, consensus);
     BOOST_CHECK_EQUAL(result, expected_nbits);
 
-    // The resulting target must be at or below powLimit (it is powLimit - 2^224).
+    // The resulting target must be at or below powLimit.
     arith_uint256 resultTarget;
     resultTarget.SetCompact(result);
     BOOST_CHECK(resultTarget <= powLimit);
@@ -250,8 +257,6 @@ BOOST_AUTO_TEST_CASE(lwma3_stable_hashrate_no_drift)
     const int64_t T        = consensus.nPowTargetSpacing;   // 300
     const unsigned int genesisBits = chainParams->GenesisBlock().nBits;
 
-    // Build initial chain: all genesisBits, ideal spacing T.
-    // The first EXTRA blocks beyond N+2 will receive computed nBits values.
     const int EXTRA     = 8;
     const int chain_len = static_cast<int>(N + 3 + EXTRA); // 587
     auto blocks = BuildChain(chain_len, genesisBits, 1775674812, T);
@@ -271,10 +276,8 @@ BOOST_AUTO_TEST_CASE(lwma3_stable_hashrate_no_drift)
 // ---------------------------------------------------------------------------
 // Test 4: powLimit cap — very slow blocks must not produce a target above
 //   powLimit.
-//   spacing = 6T → every solvetime in the window hits the internal 6T cap.
-//   Without clamping the final target would be ~6× powLimit; the guard
-//     if (nextTarget > powLimit) nextTarget = powLimit;
-//   brings it down to exactly powLimit.
+//   spacing = 6T → every solvetime hits the internal 6T cap → uncapped result
+//   would be ~6× powLimit → clamped to exactly powLimit.
 //   Expected: 0x1f0fffffU == powLimit compact.
 // ---------------------------------------------------------------------------
 BOOST_AUTO_TEST_CASE(lwma3_powlimit_cap)
@@ -294,7 +297,6 @@ BOOST_AUTO_TEST_CASE(lwma3_powlimit_cap)
     unsigned int result = GetNextWorkRequired(&blocks[lwma_height], nullptr, consensus);
 
     BOOST_CHECK_EQUAL(result, expected_nbits);
-    // Result must equal the powLimit compact representation exactly.
     BOOST_CHECK_EQUAL(result, powLimitBits);
 
     arith_uint256 resultTarget;
@@ -304,8 +306,8 @@ BOOST_AUTO_TEST_CASE(lwma3_powlimit_cap)
 
 // ---------------------------------------------------------------------------
 // Test 5: The 6T solvetime cap is symmetric — any spacing >= 6T yields the
-//   same result as exactly 6T, because every individual solvetime is clamped
-//   to min(6T, actual) before being used.
+//   same result as exactly 6T, because every solvetime is clamped to
+//   min(6T, actual) before being used.
 //   Expected for both 6T and 100T: 0x1f0fffffU.
 // ---------------------------------------------------------------------------
 BOOST_AUTO_TEST_CASE(lwma3_6T_solvetime_cap)
@@ -326,14 +328,12 @@ BOOST_AUTO_TEST_CASE(lwma3_6T_solvetime_cap)
 
     BOOST_CHECK_EQUAL(result_6T,   expected_nbits);
     BOOST_CHECK_EQUAL(result_100T, expected_nbits);
-    // Both must be identical — the cap makes all super-slow spacings equivalent.
-    BOOST_CHECK_EQUAL(result_6T, result_100T);
+    BOOST_CHECK_EQUAL(result_6T,   result_100T);
 }
 
 // ---------------------------------------------------------------------------
 // Test 6: Doubled hashrate — difficulty must rise, target must fall.
-//   spacing = T/2 → blocks arrive twice as fast → the algorithm halves the
-//   target (doubles difficulty).
+//   spacing = T/2 → blocks arrive twice as fast → algorithm halves the target.
 //   Expected: 0x1f07ffffU  (≈ powLimit / 2).
 // ---------------------------------------------------------------------------
 BOOST_AUTO_TEST_CASE(lwma3_double_hashrate)
@@ -370,7 +370,6 @@ BOOST_AUTO_TEST_CASE(lwma3_double_hashrate)
 //
 //   Any modification to loop weights, timestamp clamping, or accumulator
 //   arithmetic will produce a different compact value and fail this test.
-//   This makes it an effective trip-wire for unintentional algorithm changes.
 // ---------------------------------------------------------------------------
 BOOST_AUTO_TEST_CASE(lwma3_mixed_solvetimes_determinism)
 {
@@ -381,11 +380,10 @@ BOOST_AUTO_TEST_CASE(lwma3_mixed_solvetimes_determinism)
     const unsigned int genesisBits = chainParams->GenesisBlock().nBits;
     const arith_uint256 powLimit   = UintToArith256(consensus.powLimit);
 
-    // Build a chain of length N+3 = 579 (pindexLast = blocks[578]).
-    // LWMA window = blocks [3..578]; blockPreviousTimestamp = blocks[2].
-    // Blocks 0..2 use spacing T (only blocks[2].nTime matters as the anchor).
-    // Blocks 3..290 (first HALF=288 blocks): spacing 2T  — slow miners.
-    // Blocks 291..578 (second HALF=288 blocks): spacing T/2 — fast miners.
+    // Build chain length N+3 = 579 (pindexLast = blocks[578]).
+    // Blocks 0..2: spacing T  (anchor; only blocks[2].nTime matters as prev_ts).
+    // Blocks 3..290 (first HALF=288): spacing 2T  — slow miners.
+    // Blocks 291..578 (second HALF=288): spacing T/2 — fast miners.
     const int HALF      = static_cast<int>(N / 2); // 288
     const int chain_len = static_cast<int>(N + 3); // 579
     std::vector<CBlockIndex> blocks(chain_len);
@@ -417,15 +415,19 @@ BOOST_AUTO_TEST_CASE(lwma3_mixed_solvetimes_determinism)
 
 // ---------------------------------------------------------------------------
 // Test 8: fPowNoRetargeting — regtest shortcut.
-//   When fPowNoRetargeting is true (regtest), GetNextWorkRequired must return
-//   pindexLast->nBits unchanged regardless of the chain length or timestamps.
-//   This bypasses all LWMA logic and keeps difficulty fixed for local testing.
+//   When fPowNoRetargeting is true (REGTEST), GetNextWorkRequired must return
+//   pindexLast->nBits unchanged regardless of chain length or timestamps.
+//   This is the first branch in GetNextWorkRequired and completely bypasses
+//   LWMA-3, keeping difficulty fixed for local development and unit testing.
+//
 // ---------------------------------------------------------------------------
 BOOST_AUTO_TEST_CASE(lwma3_no_retargeting)
 {
     const auto chainParams = CreateChainParams(*m_node.args, ChainType::REGTEST);
     const auto& consensus  = chainParams->GetConsensus();
-    // consensus.fPowNoRetargeting == true for REGTEST.
+    // Pre-condition: regtest must have fPowNoRetargeting enabled.
+    BOOST_REQUIRE(consensus.fPowNoRetargeting);
+
     const int64_t N = consensus.lwmaAveragingWindow;
     const int64_t T = consensus.nPowTargetSpacing;
 
@@ -439,14 +441,61 @@ BOOST_AUTO_TEST_CASE(lwma3_no_retargeting)
 }
 
 // ---------------------------------------------------------------------------
-// Test 9: Duplicate timestamps — protection against negative or zero solvetimes.
+// Test 9: fPowAllowMinDifficultyBlocks — testnet/testnet4 shortcut.
+//   When fPowAllowMinDifficultyBlocks is true, GetNextWorkRequired returns
+//   the powLimit compact directly (second branch, before LWMA is invoked).
+//   This keeps testnet always at minimum difficulty so blocks can be mined
+//   trivially regardless of available hashrate.
+//
+//   Verified for both TESTNET and TESTNET4.
+//   Expected return value: powLimit compact = 0x1f0fffffU for both.
+//
+//   Note: lwmaAveragingWindow is dead code for these chains — the min-diff
+//   branch fires before Lwma3CalculateNextWorkRequired is ever called.
+//   Mainnet and testnet should keep the same N=576 so the parameter set is
+//   consistent; it simply has no effect on testnet block production.
+// ---------------------------------------------------------------------------
+BOOST_AUTO_TEST_CASE(lwma3_min_difficulty_testnet)
+{
+    auto check = [&](ChainType ct) {
+        const auto chainParams  = CreateChainParams(*m_node.args, ct);
+        const auto& consensus   = chainParams->GetConsensus();
+        // Pre-condition: min-difficulty must be enabled and no-retargeting off.
+        BOOST_REQUIRE(consensus.fPowAllowMinDifficultyBlocks);
+        BOOST_REQUIRE(!consensus.fPowNoRetargeting);
+
+        const int64_t N        = consensus.lwmaAveragingWindow; // 576
+        const int64_t T        = consensus.nPowTargetSpacing;
+        const unsigned int genesisBits  = chainParams->GenesisBlock().nBits;
+        const unsigned int powLimitBits = UintToArith256(consensus.powLimit).GetCompact();
+
+        // Build a chain past the bootstrap threshold so that without
+        // fPowAllowMinDifficultyBlocks the LWMA path would be taken.
+        const int lwma_height = static_cast<int>(N + 2);
+        auto blocks = BuildChain(lwma_height + 1, genesisBits, 1775674812, T);
+
+        unsigned int result = GetNextWorkRequired(&blocks[lwma_height], nullptr, consensus);
+        // Must return powLimit regardless of timestamps or chain length.
+        BOOST_CHECK_EQUAL(result, powLimitBits);
+
+        // Same at a height still in the bootstrap range — min-diff fires first.
+        unsigned int result_early = GetNextWorkRequired(&blocks[1], nullptr, consensus);
+        BOOST_CHECK_EQUAL(result_early, powLimitBits);
+    };
+
+    check(ChainType::TESTNET);
+    check(ChainType::TESTNET4);
+}
+
+// ---------------------------------------------------------------------------
+// Test 10: Duplicate timestamps — protection against negative or zero solvetimes.
 //   When a block's timestamp is <= the running previousTimestamp, LWMA-3
 //   forces it forward by 1 second:
 //     thisTimestamp = (block->GetBlockTime() > previousTimestamp)
 //                     ? block->GetBlockTime() : previousTimestamp + 1;
 //   This test exercises that branch by giving every block the same nTime.
-//   With all solvetimes forced to 1 second, the algorithm sees extremely
-//   fast block production and must raise difficulty well above powLimit / 2.
+//   With all solvetimes forced to 1 second, the algorithm sees extremely fast
+//   block production and must raise difficulty well above powLimit / 2.
 //   The result must be a valid compact value (non-zero, <= powLimit).
 // ---------------------------------------------------------------------------
 BOOST_AUTO_TEST_CASE(lwma3_duplicate_timestamps)
@@ -457,7 +506,7 @@ BOOST_AUTO_TEST_CASE(lwma3_duplicate_timestamps)
     const unsigned int genesisBits = chainParams->GenesisBlock().nBits;
     const arith_uint256 powLimit   = UintToArith256(consensus.powLimit);
 
-    // spacing = 0 → all blocks share nTime = t0.
+    // spacing = 0 → every block has the same nTime = t0.
     auto blocks = BuildChain(static_cast<int>(N + 3), genesisBits, 1775674812, 0);
 
     unsigned int result = GetNextWorkRequired(&blocks[N + 2], nullptr, consensus);
@@ -467,13 +516,13 @@ BOOST_AUTO_TEST_CASE(lwma3_duplicate_timestamps)
     // Result must be a valid, positive target that does not exceed powLimit.
     BOOST_CHECK(resultTarget > arith_uint256(0));
     BOOST_CHECK(resultTarget <= powLimit);
-    // With every solvetime = 1s, the algorithm perceives massive hashrate;
-    // difficulty must be well above the midpoint (target well below powLimit/2).
+    // With every solvetime = 1s the algorithm perceives massive hashrate;
+    // target must be well below powLimit/2 (difficulty well above midpoint).
     BOOST_CHECK(resultTarget < UintToArith256(consensus.powLimit) / 2);
 }
 
 // ---------------------------------------------------------------------------
-// Test 10: Monotonicity — higher hashrate must always produce a harder target.
+// Test 11: Monotonicity — higher hashrate must always produce a harder target.
 //   At spacing T/3 (3× hashrate) the returned target must be strictly smaller
 //   than at spacing T/2 (2× hashrate).  This validates the core property that
 //   LWMA-3 responds correctly to increasing hashrate.
@@ -487,9 +536,8 @@ BOOST_AUTO_TEST_CASE(lwma3_monotone_difficulty)
     const unsigned int genesisBits = chainParams->GenesisBlock().nBits;
     const int lwma_height = static_cast<int>(N + 2);
 
-    // Two chains with different inter-block spacings.
-    auto blocks_2x = BuildChain(lwma_height + 1, genesisBits, 1775674812, T / 2); // T/2 = 150 s
-    auto blocks_3x = BuildChain(lwma_height + 1, genesisBits, 1775674812, T / 3); // T/3 = 100 s
+    auto blocks_2x = BuildChain(lwma_height + 1, genesisBits, 1775674812, T / 2); // 150 s
+    auto blocks_3x = BuildChain(lwma_height + 1, genesisBits, 1775674812, T / 3); // 100 s
 
     unsigned int result_2x = GetNextWorkRequired(&blocks_2x[lwma_height], nullptr, consensus);
     unsigned int result_3x = GetNextWorkRequired(&blocks_3x[lwma_height], nullptr, consensus);
@@ -582,6 +630,21 @@ BOOST_AUTO_TEST_CASE(GetBlockProofEquivalentTime_test)
     }
 }
 
+// ---------------------------------------------------------------------------
+// Chain-parameter sanity checks — run for every network type.
+//
+// In addition to the upstream checks (genesis hash, nBits validity), we verify
+// the PoW routing mode for each chain so that any accidental change to
+// chainparams.cpp that flips a difficulty flag is caught immediately.
+//
+//   Chain     | fPowNoRetargeting | fPowAllowMinDifficultyBlocks | LWMA runs?
+//   ----------+-------------------+------------------------------+-----------
+//   MAIN      | false             | false                        | yes
+//   TESTNET   | false             | true                         | no (branch 2)
+//   TESTNET4  | false             | true                         | no (branch 2)
+//   SIGNET    | false             | false                        | yes
+//   REGTEST   | true              | —                            | no (branch 1)
+// ---------------------------------------------------------------------------
 void sanity_check_chainparams(const ArgsManager& args, ChainType chain_type)
 {
     const auto chainParams = CreateChainParams(args, chain_type);
@@ -589,10 +652,12 @@ void sanity_check_chainparams(const ArgsManager& args, ChainType chain_type)
 
     // Genesis block hash must match the value committed in chainparams.cpp.
     BOOST_CHECK_EQUAL(consensus.hashGenesisBlock, chainParams->GenesisBlock().GetHash());
-/*
-    // target timespan is an even multiple of spacing
-    BOOST_CHECK_EQUAL(consensus.nPowTargetTimespan % consensus.nPowTargetSpacing, 0);
-*/
+
+    /*
+        // target timespan is an even multiple of spacing
+        BOOST_CHECK_EQUAL(consensus.nPowTargetTimespan % consensus.nPowTargetSpacing, 0);
+    */
+
     // Genesis nBits must be positive, must not overflow the compact format,
     // and must represent a target at or below powLimit.
     arith_uint256 pow_compact;
@@ -601,14 +666,43 @@ void sanity_check_chainparams(const ArgsManager& args, ChainType chain_type)
     BOOST_CHECK(!neg && pow_compact != 0);
     BOOST_CHECK(!over);
     BOOST_CHECK(UintToArith256(consensus.powLimit) >= pow_compact);
-/*
+
     // check max target * 4*nPowTargetTimespan doesn't overflow -- see pow.cpp:CalculateNextWorkRequired()
+    /*
     if (!consensus.fPowNoRetargeting) {
         arith_uint256 targ_max{UintToArith256(uint256{"ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"})};
         targ_max /= consensus.nPowTargetTimespan*4;
         BOOST_CHECK(UintToArith256(consensus.powLimit) < targ_max);
+    */
+
+    // lwmaAveragingWindow must always be a positive value even if LWMA does
+    // not run on this chain — prevents division-by-zero should routing change.
+    BOOST_CHECK(consensus.lwmaAveragingWindow > 0);
+
+    // Verify the expected PoW routing mode per chain type.
+    // These checks catch accidental flag changes in chainparams.cpp.
+    switch (chain_type) {
+    case ChainType::MAIN:
+        // Full LWMA-3 path: neither shortcut must be active.
+        BOOST_CHECK(!consensus.fPowNoRetargeting);
+        BOOST_CHECK(!consensus.fPowAllowMinDifficultyBlocks);
+        break;
+    case ChainType::TESTNET:
+    case ChainType::TESTNET4:
+        // Min-difficulty shortcut active: LWMA never runs on these chains.
+        BOOST_CHECK(!consensus.fPowNoRetargeting);
+        BOOST_CHECK(consensus.fPowAllowMinDifficultyBlocks);
+        break;
+    case ChainType::SIGNET:
+        // Full LWMA-3 path: same routing as mainnet (no shortcuts).
+        BOOST_CHECK(!consensus.fPowNoRetargeting);
+        BOOST_CHECK(!consensus.fPowAllowMinDifficultyBlocks);
+        break;
+    case ChainType::REGTEST:
+        // No-retargeting shortcut: nBits never changes, fastest for testing.
+        BOOST_CHECK(consensus.fPowNoRetargeting);
+        break;
     }
-*/
 }
 
 BOOST_AUTO_TEST_CASE(ChainParams_MAIN_sanity)
