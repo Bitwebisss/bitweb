@@ -210,7 +210,7 @@ public:
         consensus.nPowTargetTimespan = 5 * 60; // 5m
         consensus.nPowTargetSpacing = 5 * 60;
         consensus.lwmaAveragingWindow = 576;
-        consensus.fPowAllowMinDifficultyBlocks = true;
+        consensus.fPowAllowMinDifficultyBlocks = false;
         consensus.enforce_BIP94 = false;
         consensus.fPowNoRetargeting = false;
         consensus.vDeployments[Consensus::DEPLOYMENT_TESTDUMMY].bit = 28;
@@ -303,8 +303,8 @@ public:
         consensus.powLimit = uint256{"000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"};
         consensus.nPowTargetTimespan = 5 * 60; // 5m
         consensus.nPowTargetSpacing = 5 * 60;
-        consensus.lwmaAveragingWindow = 576;
-        consensus.fPowAllowMinDifficultyBlocks = true;
+        consensus.lwmaAveragingWindow = 288;
+        consensus.fPowAllowMinDifficultyBlocks = false;
         consensus.enforce_BIP94 = true;
         consensus.fPowNoRetargeting = false;
 
@@ -515,7 +515,7 @@ public:
         consensus.powLimit = uint256{"7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"};
         consensus.nPowTargetTimespan = 5 * 60; // 5m
         consensus.nPowTargetSpacing = 5 * 60;
-        consensus.lwmaAveragingWindow = 576;
+        consensus.lwmaAveragingWindow = 144;
         consensus.fPowAllowMinDifficultyBlocks = true;
         consensus.enforce_BIP94 = opts.enforce_bip94;
         consensus.fPowNoRetargeting = true;
