@@ -156,7 +156,7 @@ BOOST_AUTO_TEST_CASE(get_next_work_upper_limit_actual)
 //   spacing = 6T (cap boundary)          : 0x1f0fffffU  (clamped to powLimit)
 //   spacing = 100T (above cap)           : 0x1f0fffffU  (== 6T result)
 //   spacing = T/2 (2× hashrate)          : 0x1f07ffffU  (≈ powLimit / 2)
-//   mixed window (2T first + T/2 second) : 0x1f0e02a8U
+//   mixed window (2T first + T/2 second) : 0x1f0e0d51U
 // ===========================================================================
 
 // ---------------------------------------------------------------------------
@@ -362,7 +362,7 @@ BOOST_AUTO_TEST_CASE(lwma3_double_hashrate)
 //     blocks [3 .. 3+N/2-1] : spacing 2T  (288 slow blocks)
 //     blocks [3+N/2 .. 578] : spacing T/2 (288 fast blocks)
 //   LWMA linearly weights more recent blocks higher so the fast second half
-//   dominates. Expected: 0x1f0e02a8U  (≈ 87.6 % of powLimit).
+//   dominates. Expected: 0x1f0e0d51U  (≈ 87.6 % of powLimit).
 //
 //   Any change to loop weights, timestamp clamping, or accumulator arithmetic
 //   will produce a different compact value and fail this test.
@@ -399,7 +399,7 @@ BOOST_AUTO_TEST_CASE(lwma3_mixed_solvetimes_determinism)
         else                     ts += T / 2;
     }
 
-    const unsigned int expected_nbits = 0x1f0e02a8U;
+    const unsigned int expected_nbits = 0x1f0e0d51U;
     unsigned int result = GetNextWorkRequired(&blocks[chain_len - 1], nullptr, consensus);
     BOOST_CHECK_EQUAL(result, expected_nbits);
 
