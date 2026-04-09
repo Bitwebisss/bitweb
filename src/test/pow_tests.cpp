@@ -142,13 +142,8 @@ BOOST_AUTO_TEST_CASE(get_next_work_upper_limit_actual)
 //
 //   GetNextWorkRequired() routes through three branches in order:
 //     1. fPowNoRetargeting == true  → return pindexLast->nBits   (REGTEST)
-//     2. fPowAllowMinDifficultyBlocks == true → return powLimit  (TESTNET, TESTNET4)
-//     3. Lwma3CalculateNextWorkRequired()                        (MAIN, SIGNET)
-//
-//   Consequence: lwmaAveragingWindow (N) is dead code for REGTEST, TESTNET,
-//   and TESTNET4.  Changing N in those chains has no observable effect.
-//   Only MAIN and SIGNET run the full LWMA-3 loop; N=576 matters there.
-//   There is no reason to set a smaller N for REGTEST — LWMA never runs there.
+//     2. fPowAllowMinDifficultyBlocks == true → return powLimit  (unused)
+//     3. Lwma3CalculateNextWorkRequired()     (MAIN, SIGNET, TESTNET, TESTNET4)
 //
 // ── Hardcoded expected values (verified by Python arith_uint256 simulation)
 //
@@ -419,7 +414,6 @@ BOOST_AUTO_TEST_CASE(lwma3_mixed_solvetimes_determinism)
 //   pindexLast->nBits unchanged regardless of chain length or timestamps.
 //   This is the first branch in GetNextWorkRequired and completely bypasses
 //   LWMA-3, keeping difficulty fixed for local development and unit testing.
-//
 // ---------------------------------------------------------------------------
 BOOST_AUTO_TEST_CASE(lwma3_no_retargeting)
 {
@@ -441,46 +435,51 @@ BOOST_AUTO_TEST_CASE(lwma3_no_retargeting)
 }
 
 // ---------------------------------------------------------------------------
-// Test 9: fPowAllowMinDifficultyBlocks — testnet/testnet4 shortcut.
-//   When fPowAllowMinDifficultyBlocks is true, GetNextWorkRequired returns
-//   the powLimit compact directly (second branch, before LWMA is invoked).
-//   This keeps testnet always at minimum difficulty so blocks can be mined
-//   trivially regardless of available hashrate.
-//
-//   Verified for both TESTNET and TESTNET4.
-//   Expected return value: powLimit compact = 0x1f0fffffU for both.
-//
-//   Note: lwmaAveragingWindow is dead code for these chains — the min-diff
-//   branch fires before Lwma3CalculateNextWorkRequired is ever called.
-//   Mainnet and testnet should keep the same N=576 so the parameter set is
-//   consistent; it simply has no effect on testnet block production.
+// Test 9: LWMA-3 runs on TESTNET and TESTNET4.
+//   fPowAllowMinDifficultyBlocks is disabled on both testnets so real
+//   difficulty adjustment runs exactly as on mainnet.
+//   Verifies:
+//     - both flags are in the correct state (no-retargeting off, min-diff off)
+//     - GetNextWorkRequired returns a real LWMA result (not powLimit)
+//     - result is a valid target at or below powLimit
+//     - bootstrap path still works on testnets (height <= L returns genesis nBits)
 // ---------------------------------------------------------------------------
-BOOST_AUTO_TEST_CASE(lwma3_min_difficulty_testnet)
+BOOST_AUTO_TEST_CASE(lwma3_testnet_runs_lwma)
 {
     auto check = [&](ChainType ct) {
-        const auto chainParams  = CreateChainParams(*m_node.args, ct);
-        const auto& consensus   = chainParams->GetConsensus();
-        // Pre-condition: min-difficulty must be enabled and no-retargeting off.
-        BOOST_REQUIRE(consensus.fPowAllowMinDifficultyBlocks);
+        const auto chainParams = CreateChainParams(*m_node.args, ct);
+        const auto& consensus  = chainParams->GetConsensus();
+
+        // Pre-conditions: LWMA must be the active path on testnets.
+        BOOST_REQUIRE(!consensus.fPowAllowMinDifficultyBlocks);
         BOOST_REQUIRE(!consensus.fPowNoRetargeting);
 
-        const int64_t N        = consensus.lwmaAveragingWindow; // 576
+        const int64_t N        = consensus.lwmaAveragingWindow;
         const int64_t T        = consensus.nPowTargetSpacing;
         const unsigned int genesisBits  = chainParams->GenesisBlock().nBits;
         const unsigned int powLimitBits = UintToArith256(consensus.powLimit).GetCompact();
+        const arith_uint256 powLimit    = UintToArith256(consensus.powLimit);
 
-        // Build a chain past the bootstrap threshold so that without
-        // fPowAllowMinDifficultyBlocks the LWMA path would be taken.
         const int lwma_height = static_cast<int>(N + 2);
-        auto blocks = BuildChain(lwma_height + 1, genesisBits, 1775674812, T);
+        auto blocks = BuildChain(lwma_height + 1, genesisBits, 1775674813, T);
 
+        // Past bootstrap threshold: LWMA runs and result differs from powLimit
+        // by exactly 1 compact LSB (same truncation behaviour as mainnet).
         unsigned int result = GetNextWorkRequired(&blocks[lwma_height], nullptr, consensus);
-        // Must return powLimit regardless of timestamps or chain length.
-        BOOST_CHECK_EQUAL(result, powLimitBits);
+        BOOST_CHECK(result != powLimitBits);
 
-        // Same at a height still in the bootstrap range — min-diff fires first.
-        unsigned int result_early = GetNextWorkRequired(&blocks[1], nullptr, consensus);
-        BOOST_CHECK_EQUAL(result_early, powLimitBits);
+        // Result must be a valid target at or below powLimit.
+        arith_uint256 resultTarget;
+        resultTarget.SetCompact(result);
+        BOOST_CHECK(resultTarget <= powLimit);
+        BOOST_CHECK(resultTarget > arith_uint256(0));
+
+        // Bootstrap path must still work on testnets:
+        // height <= L = N+1 returns genesis nBits unchanged.
+        const int L = static_cast<int>(N + 1);
+        auto bootstrap_blocks = BuildChain(L + 1, genesisBits, 1775674813, T);
+        unsigned int bootstrap_result = GetNextWorkRequired(&bootstrap_blocks[L], nullptr, consensus);
+        BOOST_CHECK_EQUAL(bootstrap_result, genesisBits);
     };
 
     check(ChainType::TESTNET);
@@ -640,8 +639,8 @@ BOOST_AUTO_TEST_CASE(GetBlockProofEquivalentTime_test)
 //   Chain     | fPowNoRetargeting | fPowAllowMinDifficultyBlocks | LWMA runs?
 //   ----------+-------------------+------------------------------+-----------
 //   MAIN      | false             | false                        | yes
-//   TESTNET   | false             | true                         | no (branch 2)
-//   TESTNET4  | false             | true                         | no (branch 2)
+//   TESTNET   | false             | false                        | yes
+//   TESTNET4  | false             | false                        | yes
 //   SIGNET    | false             | false                        | yes
 //   REGTEST   | true              | —                            | no (branch 1)
 // ---------------------------------------------------------------------------
@@ -689,9 +688,11 @@ void sanity_check_chainparams(const ArgsManager& args, ChainType chain_type)
         break;
     case ChainType::TESTNET:
     case ChainType::TESTNET4:
-        // Min-difficulty shortcut active: LWMA never runs on these chains.
+        // Full LWMA-3 path: same routing as mainnet.
+        // fPowAllowMinDifficultyBlocks is disabled — real difficulty
+        // adjustment runs on testnets instead of always returning powLimit.
         BOOST_CHECK(!consensus.fPowNoRetargeting);
-        BOOST_CHECK(consensus.fPowAllowMinDifficultyBlocks);
+        BOOST_CHECK(!consensus.fPowAllowMinDifficultyBlocks);
         break;
     case ChainType::SIGNET:
         // Full LWMA-3 path: same routing as mainnet (no shortcuts).
