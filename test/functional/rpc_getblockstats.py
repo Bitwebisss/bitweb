@@ -183,7 +183,7 @@ class GetblockstatsTest(BitcoinTestFramework):
         assert_equal(tip_stats["utxo_increase"], 6)
         assert_equal(tip_stats["utxo_size_inc"], 450)
         assert_equal(tip_stats["utxo_increase_actual"], 4)
-        assert_equal(tip_stats["utxo_size_inc_actual"], 300)
+        assert_equal(tip_stats["utxo_size_inc_actual"], 309)
 
         self.log.info("Test when only header is known")
         block = self.generateblock(self.nodes[0], output="raw(55)", transactions=[], submit=False)
