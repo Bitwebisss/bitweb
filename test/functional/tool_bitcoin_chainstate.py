@@ -36,6 +36,11 @@ class BitcoinChainstateTest(BitcoinTestFramework):
     def run_test(self):
         node = self.nodes[0]
         datadir = node.cli.datadir
+        
+        # code to mine block for test , later possible replace with real 1 block.
+        block_hash = self.generate(node, 1)[0]
+        block_one = node.getblock(block_hash, 0)  # verbosity=0 → raw hex
+
         node.stop_node()
 
         self.log.info(f"Testing bitweb-chainstate {self.get_binaries().chainstate_argv()} with datadir: {datadir}")
