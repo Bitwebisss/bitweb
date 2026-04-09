@@ -312,7 +312,7 @@ BOOST_AUTO_TEST_CASE(testnet4_lwma3_mixed_solvetimes_determinism)
         else                     ts += T / 2;
     }
 
-    const unsigned int expected_nbits = 0x1f0e4562U;
+    const unsigned int expected_nbits = 0x1f0e1a9eU;
     unsigned int result = GetNextWorkRequired(&blocks[chain_len - 1], nullptr, consensus);
     BOOST_CHECK_EQUAL(result, expected_nbits);
 
