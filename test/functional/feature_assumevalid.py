@@ -55,25 +55,10 @@ from test_framework.wallet_util import generate_keypair
 
 
 class BaseNode(P2PInterface):
-    def __init__(self):
-        super().__init__()
-        self.block_store = {}
-
     def send_header_for_blocks(self, new_blocks):
         headers_message = msg_headers()
         headers_message.headers = [CBlockHeader(b) for b in new_blocks]
         self.send_without_ping(headers_message)
-
-    def on_getdata(self, message):
-        """Respond to getdata requests with blocks from our store.
-
-        Without this, the node sends getdata after validating headers via
-        argon2id, gets no response, hits the ~2-second stalling timeout,
-        and disconnects us before we can send blocks explicitly.
-        """
-        for inv in message.inv:
-            if inv.hash in self.block_store:
-                self.send_without_ping(msg_block(self.block_store[inv.hash]))
 
 
 class AssumeValidTest(BitcoinTestFramework):
@@ -166,33 +151,24 @@ class AssumeValidTest(BitcoinTestFramework):
         assert_equal(self.nodes[0].getblockcount(), COINBASE_MATURITY + 1)
 
         p2p1 = self.nodes[1].add_p2p_connection(BaseNode())
-        # Pre-populate block store so p2p1 can respond to getdata immediately.
-        # With argon2id, node1 validates headers slowly (~5ms each). It sends
-        # getdata as each header is validated. Without on_getdata responding,
-        # the stalling timeout (~2s) fires and disconnects p2p1 before we can
-        # send any blocks explicitly.
-        for b in self.blocks:
-            p2p1.block_store[b.hash_int] = b
+        p2p1.send_header_for_blocks(self.blocks[0:2000])
+        p2p1.send_header_for_blocks(self.blocks[2000:])
         with self.nodes[1].assert_debug_log(expected_msgs=['Disabling signature validations at block #1', 'Enabling signature validations at block #103']):
-            p2p1.send_header_for_blocks(self.blocks[0:2000])
-            p2p1.send_header_for_blocks(self.blocks[2000:])
-            # Blocks are served automatically via on_getdata as node1 validates headers.
-            # Wait until node1 has processed all 2202 blocks.
-            self.wait_until(lambda: self.nodes[1].getblockcount() == 2202, timeout=960)
+            # Send all blocks to node1. All blocks will be accepted.
+            for i in range(2202):
+                p2p1.send_without_ping(msg_block(self.blocks[i]))
+            # Syncing 2200 blocks can take a while on slow systems. Give it plenty of time to sync.
+            p2p1.sync_with_ping(timeout=1960)
         assert_equal(self.nodes[1].getblock(self.nodes[1].getbestblockhash())['height'], 2202)
 
         p2p2 = self.nodes[2].add_p2p_connection(BaseNode())
-        # Only first 200 headers/blocks visible to node2 (not enough burial for assumevalid).
-        for b in self.blocks[:200]:
-            p2p2.block_store[b.hash_int] = b
         p2p2.send_header_for_blocks(self.blocks[0:200])
-        # Node2 will download blocks via getdata. When it processes block102,
-        # it checks the signature (not deeply buried) → rejects → disconnects p2p2.
-        self.wait_until(lambda: not p2p2.is_connected, timeout=60)
+
+        # Send blocks to node2. Block 102 will be rejected.
+        self.send_blocks_until_disconnected(p2p2)
         self.wait_until(lambda: self.nodes[2].getblockcount() >= COINBASE_MATURITY + 1)
         assert_equal(self.nodes[2].getblockcount(), COINBASE_MATURITY + 1)
 
 
 if __name__ == '__main__':
     AssumeValidTest(__file__).main()
-    
