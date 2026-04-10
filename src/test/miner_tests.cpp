@@ -758,7 +758,7 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
             txCoinbase.version = 1;
             txCoinbase.vin[0].scriptSig = CScript{} << (current_height + 1) << bi.extranonce;
             txCoinbase.vout.resize(1); // Ignore the (optional) segwit commitment added by CreateNewBlock (as the hardcoded nonces don't account for this)
-            txCoinbase.vout[0].scriptPubKey = CScript() << OP_TRUE;
+            txCoinbase.vout[0].scriptPubKey = CScript();
             block.vtx[0] = MakeTransactionRef(txCoinbase);
             if (txFirst.size() == 0)
                 baseheight = current_height;
@@ -767,14 +767,14 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
             block.hashMerkleRoot = BlockMerkleRoot(block);
             block.nNonce = bi.nonce;
             // code for regenerate BLOCKINFO
-            /*
+
             while (!CheckProofOfWork(block.GetArgon2idPoWHash(), block.nBits, Assert(m_node.chainman)->GetParams().GetConsensus())) {
                ++block.nNonce;
             }
             FILE* f = fopen("/tmp/blockinfo.txt", "a");
             fprintf(f, "{%u, %u},\n", bi.extranonce, block.nNonce);
             fclose(f); 
-            */
+
         }
         std::shared_ptr<const CBlock> shared_pblock = std::make_shared<const CBlock>(block);
         // Alternate calls between Chainman's ProcessNewBlock and submitSolution
