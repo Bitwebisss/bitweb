@@ -21,6 +21,7 @@ from test_framework.messages import (
     msg_ping,
     msg_version,
     ser_string,
+    # Bitweb Params
     uint256_from_compact,
 )
 from test_framework.p2p import (
@@ -289,9 +290,11 @@ class InvalidMessagesTest(BitcoinTestFramework):
         blockheader.nTime = int(time.time())
         blockheader.nBits = blockheader_tip.nBits
 
+        # Bitweb Params
         target = uint256_from_compact(blockheader.nBits)
         while blockheader.argon2id > target:
             blockheader.nNonce += 1
+        # Bitweb Params
 
         peer = self.nodes[0].add_p2p_connection(P2PInterface())
         peer.send_and_ping(msg_headers([blockheader]))
@@ -300,6 +303,7 @@ class InvalidMessagesTest(BitcoinTestFramework):
         assert_equal(chaintips[0]['status'], 'headers-only')
         assert_equal(chaintips[0]['hash'], blockheader.hash_hex)
 
+        # Bitweb Params
         while blockheader.argon2id <= target:
             blockheader.nNonce += 1
         with self.nodes[0].assert_debug_log(['Misbehaving', 'header with invalid proof of work']):
