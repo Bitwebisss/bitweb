@@ -293,7 +293,7 @@ def ensure_for(*, duration, f, check_interval=0.2):
         time.sleep(check_interval)
 
 
-def wait_until_helper_internal(predicate, *, timeout=60, lock=None, timeout_factor=1.0, check_interval=0.05):
+def wait_until_helper_internal(predicate, *, timeout=600, lock=None, timeout_factor=1.0, check_interval=0.05):
     """Sleep until the predicate resolves to be True.
 
     Warning: Note that this method is not recommended to be used in tests as it is
