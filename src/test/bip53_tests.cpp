@@ -70,7 +70,8 @@ BOOST_AUTO_TEST_CASE(bip53_check_transaction_direct)
             COutPoint{*Txid::FromHex("83c8e0289fecf93b5a284705396f5a652d9886cbd26236b0d647655ad8a37d82"), 21});
         t.vout.emplace_back(0, CScript{} << OP_0 << OP_1 << OP_2 << OP_4);
         BOOST_REQUIRE_EQUAL(GetSerializeSize(TX_NO_WITNESS(t)), INVALID_TX_NONWITNESS_SIZE);
-        BOOST_REQUIRE(!t.IsCoinBase());
+        // IsCoinBase() lives on CTransaction, not CMutableTransaction.
+        BOOST_REQUIRE(!CTransaction{t}.IsCoinBase());
 
         state = TxValidationState{};
         BOOST_CHECK(!CheckTransaction(CTransaction{t}, state));
@@ -83,31 +84,35 @@ BOOST_AUTO_TEST_CASE(bip53_check_transaction_direct)
     // So a 64-byte coinbase must pass CheckTransaction().
     //
     // Byte layout of a minimal coinbase (non-witness):
-    //   version   : 4
-    //   vin_count : 1
-    //   prevout   : 36  (32 zero hash + 4 0xFFFFFFFF index)
+    //   version      : 4
+    //   vin_count    : 1
+    //   prevout      : 36  (32 zero hash + 4 0xFFFFFFFF index)
     //   scriptSig_len: 1
-    //   scriptSig : N   (consensus requires 2..100 bytes)
-    //   sequence  : 4
-    //   vout_count: 1
-    //   value     : 8
-    //   spk_len   : 1
-    //   spk       : M
-    //   locktime  : 4
-    //   TOTAL     : 60 + N + M
+    //   scriptSig    : N   (consensus requires 2..100 bytes)
+    //   sequence     : 4
+    //   vout_count   : 1
+    //   value        : 8
+    //   spk_len      : 1
+    //   spk          : M
+    //   locktime     : 4
+    //   TOTAL        : 60 + N + M
     //
     // To reach 64: N + M = 4.
-    // Using N=4 (scriptSig: CScriptNum(0) + CScriptNum(0) = 4 bytes), M=0.
+    // Using N=4 (four single-byte opcodes OP_1..OP_4), M=0 (empty scriptPubKey).
+    //
+    // NOTE: CScriptNum(0) serialises as OP_0 = 1 byte, so two CScriptNum(0)
+    // would only give N=2.  Four opcodes give exactly N=4.
     {
         CMutableTransaction cb;
         cb.vin.resize(1);
         cb.vin[0].prevout.SetNull();
-        cb.vin[0].scriptSig   = CScript() << CScriptNum(0) << CScriptNum(0); // 4 bytes
+        cb.vin[0].scriptSig   = CScript() << OP_1 << OP_2 << OP_3 << OP_4; // 4 bytes
         cb.vin[0].nSequence   = CTxIn::SEQUENCE_FINAL;
-        cb.vout.emplace_back(50 * COIN, CScript{});                           // empty spk
+        cb.vout.emplace_back(50 * COIN, CScript{});                          // empty spk (M=0)
 
         BOOST_REQUIRE_EQUAL(GetSerializeSize(TX_NO_WITNESS(cb)), INVALID_TX_NONWITNESS_SIZE);
-        BOOST_REQUIRE(cb.IsCoinBase());
+        // IsCoinBase() lives on CTransaction, not CMutableTransaction.
+        BOOST_REQUIRE(CTransaction{cb}.IsCoinBase());
 
         state = TxValidationState{};
         // A 64-byte coinbase must PASS — the exemption must work.
