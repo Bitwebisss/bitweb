@@ -2,164 +2,159 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 //
-// Unit tests for the BIP-53 / CVE-2017-12842 rule:
-//   reject non-coinbase transactions whose non-witness serialized size == 64.
-//
-// The rule lives in CheckTransaction() (consensus/tx_check.cpp), so we call
-// it directly — no block assembly or chainstate required.
-//
-// Base non-witness size of the minimal transaction used here (1 in, 1 out,
-// empty scripts, fixed prevout hash):
-//   version(4) + vin_cnt(1) + hash(32) + idx(4) + ss_len(1) + seq(4)
-//   + vout_cnt(1) + value(8) + spk_len(1) + locktime(4)  =  60 bytes
-//
-// Each additional opcode pushed via << OP_x adds exactly 1 byte.
+// Adapted BIP54 64-byte transaction tests for altcoin fork (based on Bitcoin Core 0.30.2).
+// Original source: bitcoin-inquisition bip54_tests.cpp (bip54_txsize test case).
 
 #include <boost/test/unit_test.hpp>
 
-#include <consensus/tx_check.h>
+#include <consensus/consensus.h>
 #include <consensus/validation.h>
 #include <core_io.h>
+#include <node/miner.h>
+#include <pow.h>
+#include <primitives/block.h>
 #include <primitives/transaction.h>
-#include <primitives/transaction_identifier.h>
 #include <script/script.h>
-#include <serialize.h>
+#include <test/util/setup_common.h>
+#include <util/check.h>
+#include <validation.h>
 
-// ── helpers ───────────────────────────────────────────────────────────────────
+#include <memory>
+#include <string>
+#include <vector>
 
-static size_t NWSize(const CMutableTransaction& mtx)
+BOOST_AUTO_TEST_SUITE(bip54_txsize_tests)
+
+// Non-witness serialization size that is rejected by BIP54.
+static constexpr uint32_t INVALID_TX_NONWITNESS_SIZE{64};
+
+/**
+ * Mine a regtest block by incrementing nNonce until PoW is satisfied.
+ * Uses GetArgon2idPoWHash() as required by this altcoin fork.
+ */
+static void MineRegtestBlock(CBlock& block, const Consensus::Params& params)
 {
-    return GetSerializeSize(TX_NO_WITNESS(mtx));
+    block.nNonce = 0;
+    while (!CheckProofOfWork(block.GetArgon2idPoWHash(), block.nBits, params)) {
+        Assert(++block.nNonce);
+    }
 }
 
-// Minimal non-coinbase transaction; scriptPubKey is empty (60 bytes total).
-// Uses a known non-null prevout so CheckTransaction does not reject for
-// "bad-txns-prevout-null" before the size check is reached.
-static CMutableTransaction BaseTx()
+/**
+ * Test the BIP54 rule rejecting transactions that are exactly 64 bytes when
+ * serialized without witness data. Such transactions can create ambiguity in
+ * the Merkle tree (CVE-2012-2459 variant).
+ *
+ * The check lives in CheckTransaction() (tx_check.cpp) and fires with the
+ * reject reason "bad-txns-64byte". Coinbase transactions are exempt.
+ *
+ * The test exercises:
+ *  - Boundary cases: 63, 64, 65 bytes (legacy and segwit).
+ *  - Historical 64-byte transactions from the real blockchain.
+ */
+BOOST_AUTO_TEST_CASE(bip54_txsize)
 {
-    CMutableTransaction mtx;
-    mtx.version   = 1;
-    mtx.nLockTime = 0;
+    // -----------------------------------------------------------------------
+    // Build test vectors
+    // -----------------------------------------------------------------------
 
-    CTxIn in;
-    in.prevout   = COutPoint(
-        Txid::FromHex("83c8e0289fecf93b5a284705396f5a652d9886cbd26236b0d647655ad8a37d82").value(),
-        21u);
-    in.nSequence = CTxIn::SEQUENCE_FINAL;
-    mtx.vin.push_back(in);
+    struct TestCase {
+        CTransaction tx;
+        bool         valid;
+        std::string  comment;
+    };
+    std::vector<TestCase> test_cases;
 
-    mtx.vout.emplace_back(0, CScript{});
-    return mtx;
-}
+    // Helper lambda to record a case once we have verified the expected size.
+    auto record = [&](const CMutableTransaction& mtx, bool valid, std::string comment) {
+        test_cases.push_back({CTransaction{mtx}, valid, std::move(comment)});
+    };
 
-// ── test suite ────────────────────────────────────────────────────────────────
+    // Craft a base transaction we will copy-and-tweak for each case.
+    // One input spending a fictitious outpoint, one empty output.
+    // Base non-witness size is 60 bytes, so small script additions control the total.
+    CMutableTransaction base_tx;
+    base_tx.vin.emplace_back(
+        COutPoint{*Txid::FromHex("83c8e0289fecf93b5a284705396f5a652d9886cbd26236b0d647655ad8a37d82"), 21});
+    base_tx.vout.emplace_back(0, CScript{});
 
-BOOST_AUTO_TEST_SUITE(bip53_64byte_tests)
+    // --- Case 1: 63 bytes — valid (one below the forbidden size) ---
+    {
+        CMutableTransaction t{base_tx};
+        t.vout.back().scriptPubKey << OP_0 << OP_1 << OP_2;
+        BOOST_REQUIRE_MESSAGE(
+            GetSerializeSize(TX_NO_WITNESS(t)) == INVALID_TX_NONWITNESS_SIZE - 1,
+            "Unexpected size for 63-byte case");
+        record(t, /*valid=*/true, "A 63-byte legacy transaction.");
+    }
 
-// 63 bytes — below the forbidden size, must pass
-BOOST_AUTO_TEST_CASE(bip53_boundary_63_bytes_passes)
-{
-    CMutableTransaction mtx = BaseTx();
-    mtx.vout[0].scriptPubKey << OP_1 << OP_1 << OP_1;  // 60 + 3 = 63
-    BOOST_REQUIRE_MESSAGE(NWSize(mtx) == 63u,
-        "expected 63 bytes, got " << NWSize(mtx));
+    // --- Case 2: 60-byte non-witness with a witness attached — valid ---
+    // The check is on non-witness size only; a witness does not save a 64-byte tx,
+    // but a genuinely sub-64-byte tx is fine even when it carries witness data.
+    {
+        CMutableTransaction t{base_tx};
+        // Add one empty witness stack item; this does NOT change non-witness size.
+        t.vin.back().scriptWitness.stack.resize(1);
+        BOOST_REQUIRE_MESSAGE(
+            GetSerializeSize(TX_NO_WITNESS(t)) == INVALID_TX_NONWITNESS_SIZE - 4,
+            "Unexpected non-witness size for witness+sub-64 case");
+        record(t, /*valid=*/true, "A 60-byte non-witness transaction carrying a witness.");
+    }
 
-    TxValidationState state;
-    BOOST_CHECK(CheckTransaction(CTransaction(mtx), state));
-    BOOST_CHECK(state.IsValid());
-}
+    // --- Case 3: 64 bytes via scriptPubKey padding — invalid ---
+    {
+        CMutableTransaction t{base_tx};
+        t.vout.back().scriptPubKey << OP_0 << OP_1 << OP_2 << OP_4;
+        BOOST_REQUIRE_MESSAGE(
+            GetSerializeSize(TX_NO_WITNESS(t)) == INVALID_TX_NONWITNESS_SIZE,
+            "Unexpected size for 64-byte spk case");
+        record(t, /*valid=*/false, "A 64-byte legacy transaction (4 bytes in scriptPubKey).");
+    }
 
-// 64 bytes — exactly forbidden, must be rejected
-BOOST_AUTO_TEST_CASE(bip53_boundary_64_bytes_rejected)
-{
-    CMutableTransaction mtx = BaseTx();
-    mtx.vout[0].scriptPubKey << OP_1 << OP_1 << OP_1 << OP_1;  // 60 + 4 = 64
-    BOOST_REQUIRE_MESSAGE(NWSize(mtx) == 64u,
-        "expected 64 bytes, got " << NWSize(mtx));
+    // --- Case 4: 64 bytes via scriptSig + nValue — invalid ---
+    // Demonstrates that the check is purely size-based, not structure-based.
+    {
+        CMutableTransaction t{base_tx};
+        t.vout.back().nValue = MAX_MONEY;
+        t.vin.back().scriptSig << std::vector<uint8_t>{0x42, 0x42, 0x42};
+        BOOST_REQUIRE_MESSAGE(
+            GetSerializeSize(TX_NO_WITNESS(t)) == INVALID_TX_NONWITNESS_SIZE,
+            "Unexpected size for 64-byte scriptsig case");
+        record(t, /*valid=*/false, "A 64-byte legacy transaction (3-byte scriptSig + MAX_MONEY value).");
+    }
 
-    TxValidationState state;
-    BOOST_CHECK(!CheckTransaction(CTransaction(mtx), state));
-    BOOST_CHECK_MESSAGE(state.GetRejectReason() == "bad-txns-64byte",
-        "wrong reject reason: " << state.GetRejectReason());
-}
+    // --- Case 5: 65 bytes — valid (one above the forbidden size) ---
+    {
+        CMutableTransaction t{base_tx};
+        t.vout.back().scriptPubKey << OP_0 << OP_1 << OP_2 << OP_4 << OP_8;
+        BOOST_REQUIRE_MESSAGE(
+            GetSerializeSize(TX_NO_WITNESS(t)) == INVALID_TX_NONWITNESS_SIZE + 1,
+            "Unexpected size for 65-byte case");
+        record(t, /*valid=*/true, "A 65-byte legacy transaction.");
+    }
 
-// 65 bytes — above the forbidden size, must pass
-BOOST_AUTO_TEST_CASE(bip53_boundary_65_bytes_passes)
-{
-    CMutableTransaction mtx = BaseTx();
-    mtx.vout[0].scriptPubKey << OP_1 << OP_1 << OP_1 << OP_1 << OP_1;  // 60 + 5 = 65
-    BOOST_REQUIRE_MESSAGE(NWSize(mtx) == 65u,
-        "expected 65 bytes, got " << NWSize(mtx));
+    // --- Case 6: 64-byte non-witness even though witness is present — invalid ---
+    // A witness does NOT exempt a transaction from the 64-byte non-witness size check.
+    {
+        CMutableTransaction t{base_tx};
+        t.vout.back().scriptPubKey << OP_0 << OP_1 << OP_2 << OP_4;
+        // Add witness data to make the *with-witness* size larger than 64.
+        t.vin.back().scriptWitness.stack.push_back({0x21, 0x32, 0x45, 0x57, 0x62, 0x81, 0x94, 0x12});
+        BOOST_REQUIRE_MESSAGE(
+            GetSerializeSize(TX_NO_WITNESS(t)) == INVALID_TX_NONWITNESS_SIZE,
+            "Unexpected non-witness size for segwit+64 case");
+        BOOST_REQUIRE_MESSAGE(
+            GetSerializeSize(TX_WITH_WITNESS(t)) > INVALID_TX_NONWITNESS_SIZE,
+            "Witness size should exceed 64 bytes");
+        record(t, /*valid=*/false,
+               "A 64-byte non-witness Segwit transaction (witness does not exempt it).");
+    }
 
-    TxValidationState state;
-    BOOST_CHECK(CheckTransaction(CTransaction(mtx), state));
-    BOOST_CHECK(state.IsValid());
-}
-
-// A 64-byte coinbase is explicitly excluded from the rule.
-//
-// Layout:  version(4) + vin_cnt(1) + null_hash(32) + idx(4)
-//          + ss_len(1) + scriptSig(4) + seq(4)
-//          + vout_cnt(1) + value(8) + spk_len(1) + spk(0)
-//          + locktime(4)  =  64 bytes
-BOOST_AUTO_TEST_CASE(bip53_coinbase_64_bytes_is_allowed)
-{
-    CMutableTransaction cb;
-    cb.version   = 1;
-    cb.nLockTime = 0;
-
-    CTxIn in;
-    in.prevout   = COutPoint{};  // null prevout → coinbase
-    in.scriptSig << OP_1 << OP_1 << OP_1 << OP_1;  // 4 bytes (satisfies 2..100)
-    in.nSequence = CTxIn::SEQUENCE_FINAL;
-    cb.vin.push_back(in);
-
-    cb.vout.emplace_back(0, CScript{});  // empty scriptPubKey
-
-    BOOST_CHECK(CTransaction(cb).IsCoinBase());
-    BOOST_REQUIRE_MESSAGE(NWSize(cb) == 64u,
-        "expected 64 bytes, got " << NWSize(cb));
-
-    TxValidationState state;
-    BOOST_CHECK(CheckTransaction(CTransaction(cb), state));
-    BOOST_CHECK(state.IsValid());
-}
-
-// Witness does NOT rescue a 64-byte tx — rule checks non-witness size only
-BOOST_AUTO_TEST_CASE(bip53_segwit_nonwitness_64_rejected)
-{
-    CMutableTransaction mtx = BaseTx();
-    mtx.vout[0].scriptPubKey << OP_1 << OP_1 << OP_1 << OP_1;  // nw = 64
-    BOOST_REQUIRE_MESSAGE(NWSize(mtx) == 64u,
-        "expected 64 bytes, got " << NWSize(mtx));
-
-    mtx.vin[0].scriptWitness.stack.push_back({0x42, 0x42, 0x42});
-    BOOST_CHECK_MESSAGE(GetSerializeSize(TX_WITH_WITNESS(mtx)) > 64u,
-        "with-witness size should exceed 64");
-    BOOST_REQUIRE_MESSAGE(NWSize(mtx) == 64u, "non-witness size changed unexpectedly");
-
-    TxValidationState state;
-    BOOST_CHECK(!CheckTransaction(CTransaction(mtx), state));
-    BOOST_CHECK_MESSAGE(state.GetRejectReason() == "bad-txns-64byte",
-        "wrong reject reason: " << state.GetRejectReason());
-}
-
-// nw = 65 with a witness — must pass
-BOOST_AUTO_TEST_CASE(bip53_segwit_nonwitness_65_passes)
-{
-    CMutableTransaction mtx = BaseTx();
-    mtx.vout[0].scriptPubKey << OP_1 << OP_1 << OP_1 << OP_1 << OP_1;  // nw = 65
-    mtx.vin[0].scriptWitness.stack.push_back({0x42});
-
-    TxValidationState state;
-    BOOST_CHECK(CheckTransaction(CTransaction(mtx), state));
-    BOOST_CHECK(state.IsValid());
-}
-
-// Historical real-world 64-byte transactions — all must be rejected
-BOOST_AUTO_TEST_CASE(bip53_historical_64byte_transactions)
-{
-    const char* hexes[] = {
+    // -----------------------------------------------------------------------
+    // Historical 64-byte transactions sourced from Chris Stewart's BIP53 list.
+    // These are real on-chain transactions that would be rejected by this rule.
+    // -----------------------------------------------------------------------
+    static constexpr std::string_view kHistoricalTxsHex[]{
         "0200000001deb98691723fa71260ffca6ea0a7bc0a63b0a8a366e1b585caad47fb269a2ce4"
         "01000000030251b201000000010000000000000000016a00000000",
 
@@ -176,19 +171,64 @@ BOOST_AUTO_TEST_CASE(bip53_historical_64byte_transactions)
         "01000000035101b100000000010000000000000000016a01000000",
     };
 
-    for (const char* hex : hexes) {
-        CMutableTransaction mtx;
-        BOOST_REQUIRE_MESSAGE(DecodeHexTx(mtx, hex),
-            "DecodeHexTx failed for: " << hex);
-        BOOST_CHECK_MESSAGE(NWSize(mtx) == 64u,
-            "expected 64 bytes for: " << hex);
+    for (const auto hex : kHistoricalTxsHex) {
+        CMutableTransaction hist;
+        Assert(DecodeHexTx(hist, std::string{hex}));
+        BOOST_REQUIRE_MESSAGE(
+            GetSerializeSize(TX_NO_WITNESS(hist)) == INVALID_TX_NONWITNESS_SIZE,
+            "Historical tx should be exactly 64 bytes");
+        std::string comment{"Historical 64-byte transaction " + hist.GetHash().ToString()};
+        test_cases.push_back({CTransaction{hist}, /*valid=*/false, std::move(comment)});
+    }
 
-        TxValidationState state;
-        BOOST_CHECK_MESSAGE(!CheckTransaction(CTransaction(mtx), state),
-            "should have been rejected: " << hex);
-        BOOST_CHECK_MESSAGE(state.GetRejectReason() == "bad-txns-64byte",
-            "wrong reject reason '" << state.GetRejectReason()
-            << "' for: " << hex);
+    // -----------------------------------------------------------------------
+    // Run each test case through AcceptBlock() on a fresh regtest chain.
+    // We use a single RegTestingSetup so we can build blocks sequentially.
+    // -----------------------------------------------------------------------
+    RegTestingSetup test_setup{};
+    auto& chainman{*test_setup.m_node.chainman};
+    const Consensus::Params& params{chainman.GetConsensus()};
+
+    // cs_main / chainman mutex must be held when calling AcceptBlock.
+    LOCK(chainman.GetMutex());
+
+    for (const auto& tc : test_cases) {
+        // Assemble a template block on top of the current tip.
+        CBlock block{
+            node::BlockAssembler{chainman.ActiveChainstate(), /*mempool=*/nullptr, {}}
+                .CreateNewBlock()
+                ->block};
+
+        // Inject the transaction under test after the coinbase.
+        block.vtx.push_back(MakeTransactionRef(tc.tx));
+
+        // Recompute the witness commitment in the coinbase (if any) and the
+        // Merkle root so the block is structurally valid for AcceptBlock.
+        node::RegenerateCommitments(block, chainman);
+
+        // Mine the block (find a valid nNonce).
+        MineRegtestBlock(block, params);
+
+        const auto pblock{std::make_shared<const CBlock>(std::move(block))};
+        BlockValidationState state;
+        const bool accepted{chainman.AcceptBlock(
+            pblock,
+            state,
+            /*ppindex=*/nullptr,
+            /*fRequested=*/true,
+            /*dbp=*/nullptr,
+            /*fNewBlock=*/nullptr,
+            /*min_pow_checked=*/true)};
+
+        BOOST_CHECK_MESSAGE(accepted == tc.valid, tc.comment);
+
+        if (!tc.valid) {
+            // The 64-byte check in CheckTransaction() emits this reason.
+            BOOST_CHECK_MESSAGE(
+                state.GetRejectReason() == "bad-txns-64byte",
+                "Wrong reject reason for: " + tc.comment
+                + " (got: " + state.GetRejectReason() + ")");
+        }
     }
 }
 
