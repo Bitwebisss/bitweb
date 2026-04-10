@@ -756,7 +756,7 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
             block.nVersion = VERSIONBITS_TOP_BITS;
             block.nTime = Assert(m_node.chainman)->ActiveChain().Tip()->GetMedianTimePast()+1;
             txCoinbase.version = 1;
-            txCoinbase.vin[0].scriptSig = CScript{} << CScriptNum(current_height + 1) << CScriptNum(bi.extranonce);
+            txCoinbase.vin[0].scriptSig = CScript{} << (current_height + 1) << bi.extranonce << std::vector<unsigned char>(10, 0);
             txCoinbase.vout.resize(1); // Ignore the (optional) segwit commitment added by CreateNewBlock (as the hardcoded nonces don't account for this)
             txCoinbase.vout[0].scriptPubKey = CScript();
             block.vtx[0] = MakeTransactionRef(txCoinbase);
