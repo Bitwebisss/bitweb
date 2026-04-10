@@ -16,9 +16,9 @@ bool CheckTransaction(const CTransaction& tx, TxValidationState& state)
     if (tx.vout.empty())
         return state.Invalid(TxValidationResult::TX_CONSENSUS, "bad-txns-vout-empty");
     // Size limits (this doesn't take the witness into account, as that hasn't been checked for malleability)
-    if (::GetSerializeSize(TX_NO_WITNESS(tx)) * WITNESS_SCALE_FACTOR > MAX_BLOCK_WEIGHT) {
+    if (::GetSerializeSize(TX_NO_WITNESS(tx)) * WITNESS_SCALE_FACTOR > MAX_BLOCK_WEIGHT)
         return state.Invalid(TxValidationResult::TX_CONSENSUS, "bad-txns-oversize");
-    }
+
     // BIP-53: Reject transactions that are exactly 64 bytes when serialized
     // without witness. Such transactions create ambiguity in the Merkle tree
     // (a 64-byte tx can be misread as an inner Merkle node), enabling fake
@@ -28,7 +28,6 @@ bool CheckTransaction(const CTransaction& tx, TxValidationState& state)
     if (::GetSerializeSize(TX_NO_WITNESS(tx)) == 64)
         return state.Invalid(TxValidationResult::TX_CONSENSUS, "bad-txns-64byte",
                              "tx serialized size is exactly 64 bytes (BIP-53)");
-    }
 
     // Check for negative or overflow output values (see CVE-2010-5139)
     CAmount nValueOut = 0;
