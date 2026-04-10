@@ -59,6 +59,7 @@ from test_framework.test_framework import BitcoinTestFramework
 from test_framework.util import assert_equal
 from test_framework.wallet_util import generate_keypair
 
+# Bitweb Params
 # Bitweb: 300s block time. For assumevalid's 2-week equivalence check:
 #   burial_count * nPowTargetSpacing > 14 * 24 * 3600 = 1,209,600
 #   4200 * 300 = 1,260,000 > 1,209,600  ✓
