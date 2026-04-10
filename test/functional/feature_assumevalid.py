@@ -152,7 +152,9 @@ class AssumeValidTest(BitcoinTestFramework):
 
         p2p1 = self.nodes[1].add_p2p_connection(BaseNode())
         p2p1.send_header_for_blocks(self.blocks[0:2000])
+        p2p1.sync_with_ping()
         p2p1.send_header_for_blocks(self.blocks[2000:])
+        p2p1.sync_with_ping()
         with self.nodes[1].assert_debug_log(expected_msgs=['Disabling signature validations at block #1', 'Enabling signature validations at block #103']):
             # Send all blocks to node1. All blocks will be accepted.
             for i in range(2202):
@@ -163,7 +165,7 @@ class AssumeValidTest(BitcoinTestFramework):
 
         p2p2 = self.nodes[2].add_p2p_connection(BaseNode())
         p2p2.send_header_for_blocks(self.blocks[0:200])
-
+        p2p2.sync_with_ping()
         # Send blocks to node2. Block 102 will be rejected.
         self.send_blocks_until_disconnected(p2p2)
         self.wait_until(lambda: self.nodes[2].getblockcount() >= COINBASE_MATURITY + 1)
