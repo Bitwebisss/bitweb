@@ -21,12 +21,10 @@ bool CheckTransaction(const CTransaction& tx, TxValidationState& state)
     }
 
     // BIP-53: Reject transactions that are exactly 64 bytes when serialized
-    // without witness. Such transactions create ambiguity in the Merkle tree
-    // (a 64-byte tx can be misread as an inner Merkle node), enabling fake
-    // SPV proofs. Safe to enforce from block 0: policy already prevented these.
-    // When upstream Bitcoin Core activates BIP-53, they will use their own
-    // activation height; our chain enforces this from genesis.
-    if (::GetSerializeSize(TX_NO_WITNESS(tx)) == 64)
+    // without witness. Such transactions create ambiguity in the Merkle tree.
+    // Coinbase transactions are excluded: a 64-byte coinbase would require
+    // at least 224 bits of work to exploit, making it practically impossible.
+    if (!tx.IsCoinBase() && ::GetSerializeSize(TX_NO_WITNESS(tx)) == 64)
         return state.Invalid(TxValidationResult::TX_CONSENSUS, "bad-txns-64byte",
                              "tx serialized size is exactly 64 bytes (BIP-53)");
 
