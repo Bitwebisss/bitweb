@@ -30,7 +30,7 @@
 
 using namespace util::hex_literals;
 
-BOOST_AUTO_TEST_SUITE(bip53_tests)
+BOOST_AUTO_TEST_SUITE(bip54_tests)
 
 // Non-witness serialization size forbidden by BIP-53.
 static constexpr uint32_t INVALID_TX_NONWITNESS_SIZE{64};
@@ -50,27 +50,40 @@ static void MineRegtestBlock(CBlock& block, const Consensus::Params& params)
 // ============================================================================
 // PART 1 — Direct CheckTransaction() tests (unit-level, no block required)
 //
-// Tests the rule at the lowest level: CheckTransaction() in tx_check.cpp.
-// Covers both normal-tx rejection AND the coinbase exemption.
+// Calls CheckTransaction() in tx_check.cpp directly without going through the
+// block pipeline. This is the lowest-level verification that:
+//   (a) a regular 64-byte transaction is rejected with "bad-txns-64byte", and
+//   (b) a 64-byte COINBASE transaction is explicitly exempted and accepted.
 //
-// Why test CheckTransaction() directly?
-//   AcceptBlock() calls CheckBlock() → CheckTransaction() for every tx.
-//   Testing at this level ensures the rule fires (or is skipped for coinbase)
-//   independently of block-level plumbing.
+// The coinbase exemption exists because exploiting a 64-byte coinbase would
+// require ~2^224 work (the coinbase is the leftmost leaf of every block's
+// Merkle tree), making it computationally infeasible to attack.
+//
+// Why test CheckTransaction() directly in addition to AcceptBlock()?
+//   AcceptBlock() calls CheckBlock() which calls CheckTransaction() for every
+//   transaction. Testing at this level proves the rule fires (or is correctly
+//   skipped) independently of any block-level or chain-level plumbing.
 // ============================================================================
 
-BOOST_AUTO_TEST_CASE(bip53_check_transaction_direct)
+BOOST_AUTO_TEST_CASE(bip54_check_transaction_direct)
 {
     TxValidationState state;
 
     // --- Regular 64-byte transaction is rejected by CheckTransaction() ---
+    //
+    // Base tx layout (non-witness):
+    //   version(4) + vin_cnt(1) + prevout_hash(32) + prevout_idx(4)
+    //   + scriptSig_len(1) + scriptSig(0) + sequence(4)
+    //   + vout_cnt(1) + value(8) + spk_len(1) + spk(0) + locktime(4) = 60 bytes
+    //
+    // Adding 4 single-byte opcodes to scriptPubKey brings the total to 64.
     {
         CMutableTransaction t;
         t.vin.emplace_back(
             COutPoint{*Txid::FromHex("83c8e0289fecf93b5a284705396f5a652d9886cbd26236b0d647655ad8a37d82"), 21});
         t.vout.emplace_back(0, CScript{} << OP_0 << OP_1 << OP_2 << OP_4);
         BOOST_REQUIRE_EQUAL(GetSerializeSize(TX_NO_WITNESS(t)), INVALID_TX_NONWITNESS_SIZE);
-        // IsCoinBase() lives on CTransaction, not CMutableTransaction.
+        // IsCoinBase() is on CTransaction, not CMutableTransaction.
         BOOST_REQUIRE(!CTransaction{t}.IsCoinBase());
 
         state = TxValidationState{};
@@ -80,28 +93,21 @@ BOOST_AUTO_TEST_CASE(bip53_check_transaction_direct)
 
     // --- Coinbase transaction: 64 bytes MUST be accepted (explicit exemption) ---
     //
-    // tx_check.cpp: if (!tx.IsCoinBase() && size == 64) → reject
-    // So a 64-byte coinbase must pass CheckTransaction().
+    // tx_check.cpp: `if (!tx.IsCoinBase() && size == 64)` — coinbase is skipped.
     //
-    // Byte layout of a minimal coinbase (non-witness):
-    //   version      : 4
-    //   vin_count    : 1
-    //   prevout      : 36  (32 zero hash + 4 0xFFFFFFFF index)
-    //   scriptSig_len: 1
-    //   scriptSig    : N   (consensus requires 2..100 bytes)
-    //   sequence     : 4
-    //   vout_count   : 1
-    //   value        : 8
-    //   spk_len      : 1
-    //   spk          : M
-    //   locktime     : 4
-    //   TOTAL        : 60 + N + M
+    // Coinbase layout (non-witness):
+    //   version(4) + vin_cnt(1) + null_prevout(36) + scriptSig_len(1) + scriptSig(N)
+    //   + sequence(4) + vout_cnt(1) + value(8) + spk_len(1) + spk(M) + locktime(4)
+    //   = 60 + N + M bytes
     //
     // To reach 64: N + M = 4.
-    // Using N=4 (four single-byte opcodes OP_1..OP_4), M=0 (empty scriptPubKey).
+    // Using N=4 (four 1-byte opcodes OP_1..OP_4), M=0 (empty scriptPubKey).
     //
-    // NOTE: CScriptNum(0) serialises as OP_0 = 1 byte, so two CScriptNum(0)
-    // would only give N=2.  Four opcodes give exactly N=4.
+    // IMPORTANT: CScriptNum(0) serialises as OP_0 = 1 byte, so:
+    //   CScript() << CScriptNum(0) << CScriptNum(0)  →  N=2, total=62  ← wrong!
+    //   CScript() << OP_1 << OP_2 << OP_3 << OP_4   →  N=4, total=64  ← correct
+    //
+    // Consensus requires coinbase scriptSig length in [2, 100] bytes; 4 is valid.
     {
         CMutableTransaction cb;
         cb.vin.resize(1);
@@ -111,11 +117,10 @@ BOOST_AUTO_TEST_CASE(bip53_check_transaction_direct)
         cb.vout.emplace_back(50 * COIN, CScript{});                          // empty spk (M=0)
 
         BOOST_REQUIRE_EQUAL(GetSerializeSize(TX_NO_WITNESS(cb)), INVALID_TX_NONWITNESS_SIZE);
-        // IsCoinBase() lives on CTransaction, not CMutableTransaction.
+        // IsCoinBase() is on CTransaction, not CMutableTransaction.
         BOOST_REQUIRE(CTransaction{cb}.IsCoinBase());
 
         state = TxValidationState{};
-        // A 64-byte coinbase must PASS — the exemption must work.
         BOOST_CHECK_MESSAGE(CheckTransaction(CTransaction{cb}, state),
                             "64-byte coinbase must be accepted by CheckTransaction (BIP-53 exemption)");
         BOOST_CHECK(state.IsValid());
@@ -151,11 +156,29 @@ BOOST_AUTO_TEST_CASE(bip53_check_transaction_direct)
 // ============================================================================
 // PART 2 — AcceptBlock() integration tests
 //
-// Wraps each transaction in a mined regtest block and calls AcceptBlock().
-// This exercises the full pipeline: CheckBlock → CheckTransaction.
+// Each transaction is wrapped in a mined regtest block and submitted via
+// AcceptBlock(). This exercises the full BIP-53 enforcement pipeline:
+//   CheckBlockHeader → CheckBlock → CheckTransaction (BIP-53 check here)
+//
+// AcceptBlock() return value semantics in this test:
+//   • INVALID (64-byte tx): CheckBlock() fires "bad-txns-64byte" at step 2.
+//     AcceptBlock() returns false immediately; the block is not stored.
+//
+//   • VALID (non-64-byte tx): CheckBlock() passes. The block is stored and
+//     AcceptBlock() returns true. The subsequent UTXO validation (ConnectBlock)
+//     fails with TX_MISSING_INPUTS because the test transactions spend
+//     fictitious outputs that don't exist in the UTXO set — but this does NOT
+//     permanently invalidate the block and does NOT affect AcceptBlock()'s
+//     return value. TX_MISSING_INPUTS means "maybe connectable later", not
+//     "invalid by consensus". The test correctly isolates the BIP-53 check.
+//
+// NOTE: The coinbase-exemption path is covered at the CheckTransaction level
+// in Part 1 above. Crafting a block whose *own coinbase* is exactly 64 bytes
+// (while also satisfying witness-commitment and PoW) is not required here;
+// AcceptBlock() calls the same CheckTransaction() that Part 1 already tests.
 // ============================================================================
 
-BOOST_AUTO_TEST_CASE(bip53_txsize)
+BOOST_AUTO_TEST_CASE(bip54_txsize)
 {
     struct TestCase {
         CTransaction tx;
@@ -169,7 +192,9 @@ BOOST_AUTO_TEST_CASE(bip53_txsize)
     };
 
     // Base tx: 1 input spending a fictitious outpoint, 1 empty output.
-    // Non-witness size of the bare base is 60 bytes.
+    // Non-witness size of the bare base is 60 bytes:
+    //   version(4) + vin_cnt(1) + prevout(36) + scriptSig_len(1) + scriptSig(0)
+    //   + sequence(4) + vout_cnt(1) + value(8) + spk_len(1) + spk(0) + locktime(4)
     CMutableTransaction base;
     base.vin.emplace_back(
         COutPoint{*Txid::FromHex("83c8e0289fecf93b5a284705396f5a652d9886cbd26236b0d647655ad8a37d82"), 21});
@@ -179,50 +204,56 @@ BOOST_AUTO_TEST_CASE(bip53_txsize)
     // Boundary cases
     // ------------------------------------------------------------------
 
-    // 63 bytes — valid
+    // 63 bytes — valid (one below the forbidden size)
     {
         CMutableTransaction t{base};
-        t.vout.back().scriptPubKey << OP_0 << OP_1 << OP_2;
+        t.vout.back().scriptPubKey << OP_0 << OP_1 << OP_2; // +3 bytes
         BOOST_REQUIRE_EQUAL(GetSerializeSize(TX_NO_WITNESS(t)), INVALID_TX_NONWITNESS_SIZE - 1);
         record(t, true, "A 63-byte legacy transaction.");
     }
 
-    // 60-byte non-witness tx with witness data — valid
-    // The rule checks non-witness size only.
+    // 60-byte non-witness tx with witness data — valid.
+    // BIP-53 checks the NON-WITNESS serialization only; a witness attached to
+    // a 60-byte-non-witness tx does not push it across the 64-byte boundary.
     {
         CMutableTransaction t{base};
-        t.vin.back().scriptWitness.stack.resize(1);
+        t.vin.back().scriptWitness.stack.resize(1); // one empty stack item; no non-witness bytes added
         BOOST_REQUIRE_EQUAL(GetSerializeSize(TX_NO_WITNESS(t)), INVALID_TX_NONWITNESS_SIZE - 4);
         record(t, true, "A 60-byte (non-witness) transaction that also carries witness data.");
     }
 
-    // 64 bytes via scriptPubKey — invalid
+    // 64 bytes via scriptPubKey padding — invalid.
+    // Four single-byte opcodes push non-witness size from 60 to 64.
     {
         CMutableTransaction t{base};
-        t.vout.back().scriptPubKey << OP_0 << OP_1 << OP_2 << OP_4;
+        t.vout.back().scriptPubKey << OP_0 << OP_1 << OP_2 << OP_4; // +4 bytes
         BOOST_REQUIRE_EQUAL(GetSerializeSize(TX_NO_WITNESS(t)), INVALID_TX_NONWITNESS_SIZE);
         record(t, false, "A 64-byte legacy transaction (4 bytes in scriptPubKey).");
     }
 
-    // 64 bytes via scriptSig — invalid
+    // 64 bytes via scriptSig — invalid.
+    // `CScript << vector<3 bytes>` encodes as: 1-byte push-opcode + 3 data bytes = +4 bytes.
+    // The nValue change (0 → MAX_MONEY) does NOT affect size (both are int64, 8 bytes).
+    // This case demonstrates the check is purely size-based, regardless of layout.
     {
         CMutableTransaction t{base};
         t.vout.back().nValue = MAX_MONEY;
-        t.vin.back().scriptSig << std::vector<uint8_t>{0x42, 0x42, 0x42};
+        t.vin.back().scriptSig << std::vector<uint8_t>{0x42, 0x42, 0x42}; // +4 bytes to scriptSig
         BOOST_REQUIRE_EQUAL(GetSerializeSize(TX_NO_WITNESS(t)), INVALID_TX_NONWITNESS_SIZE);
         record(t, false, "A 64-byte legacy transaction (3-byte scriptSig + MAX_MONEY nValue).");
     }
 
-    // 65 bytes — valid
+    // 65 bytes — valid (one above the forbidden size)
     {
         CMutableTransaction t{base};
-        t.vout.back().scriptPubKey << OP_0 << OP_1 << OP_2 << OP_4 << OP_8;
+        t.vout.back().scriptPubKey << OP_0 << OP_1 << OP_2 << OP_4 << OP_8; // +5 bytes
         BOOST_REQUIRE_EQUAL(GetSerializeSize(TX_NO_WITNESS(t)), INVALID_TX_NONWITNESS_SIZE + 1);
         record(t, true, "A 65-byte legacy transaction.");
     }
 
-    // 64-byte non-witness WITH witness — still invalid
-    // Witness presence does NOT exempt a tx from the non-witness size check.
+    // 64-byte non-witness WITH witness data — still invalid.
+    // A witness does NOT rescue a transaction whose non-witness size is 64.
+    // The rule checks non-witness serialization; the full serialization is irrelevant.
     {
         CMutableTransaction t{base};
         t.vout.back().scriptPubKey << OP_0 << OP_1 << OP_2 << OP_4;
@@ -236,13 +267,16 @@ BOOST_AUTO_TEST_CASE(bip53_txsize)
     //
     // PayToAnchor (P2A) is an output type introduced in Bitcoin Core v28 as part of
     // the TRUC / ephemeral-anchor mechanism. Its scriptPubKey is:
-    //   OP_1 <0x4e73>   (SegWit v1 with a 2-byte witness program)
+    //   OP_1 <0x4e73>   (SegWit v1 with a 2-byte witness program, 4 bytes total)
     // Anyone can spend a P2A output without a key — it is used to attach fee-bumping
     // child transactions to a parent in package relay without exposing private keys.
-    // The non-witness serialization of this tx is still 64 bytes, so it must be rejected.
+    //
+    // The fake 64-byte Schnorr signature in the witness makes the tx look like a
+    // realistic P2TR spend. The non-witness serialization is still 64 bytes, so the
+    // BIP-53 rule must fire despite the witness.
     {
         CMutableTransaction t{base};
-        t.vout.back().scriptPubKey = GetScriptForDestination(PayToAnchor{});
+        t.vout.back().scriptPubKey = GetScriptForDestination(PayToAnchor{}); // 4 bytes
         auto sig{"5a78b5a14a2527feb02c08b8124e74c3b9bcc1bd3dba1fbfa87f1c930f28a46f"
                  "ea2bf375105dfd835e212c9127aad4976c46ef86be02edbb681e6f38f9a9e06f01"_hex_v_u8};
         t.vin.back().scriptWitness.stack.emplace_back(std::move(sig));
@@ -251,7 +285,13 @@ BOOST_AUTO_TEST_CASE(bip53_txsize)
     }
 
     // ------------------------------------------------------------------
-    // Historical 64-byte transactions (from Chris Stewart's BIP-53 list)
+    // Historical 64-byte transactions sourced from Chris Stewart's BIP-53
+    // reference list. These are real transactions from the Bitcoin blockchain
+    // that would be invalid under BIP-53. Each has:
+    //   - 3-byte scriptSig (layout: 1-byte push opcode + 2 data bytes)
+    //   - 1-byte scriptPubKey (OP_RETURN = 0x6a)
+    //   - value = 0
+    //   Total: 60 + 3 + 1 = 64 bytes
     // ------------------------------------------------------------------
     static constexpr std::string_view kHistoricalHex[]{
         "0200000001deb98691723fa71260ffca6ea0a7bc0a63b0a8a366e1b585caad47fb269a2ce4"
@@ -289,9 +329,17 @@ BOOST_AUTO_TEST_CASE(bip53_txsize)
     auto& chainman{*test_setup.m_node.chainman};
     const Consensus::Params& params{chainman.GetConsensus()};
 
+    // AcceptBlock() requires cs_main.
     LOCK(chainman.GetMutex());
 
     for (const auto& tc : cases) {
+        // Build a block template on the current chain tip.
+        // All blocks are effectively built on the genesis block (height 0) because:
+        //   - Invalid (64-byte) blocks are rejected before being stored.
+        //   - Valid blocks are stored (AcceptBlock returns true) but fail to
+        //     connect (TX_MISSING_INPUTS on the fictitious test input). Since
+        //     TX_MISSING_INPUTS is not a permanent consensus failure, the block
+        //     is not marked invalid — the active tip stays at height 0.
         CBlock block{
             node::BlockAssembler{chainman.ActiveChainstate(), /*mempool=*/nullptr, {}}
                 .CreateNewBlock()
