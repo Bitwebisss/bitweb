@@ -793,6 +793,21 @@ class CBlockHeader:
         )
         return uint256_from_str(digest)
 
+    @property
+    def argon2id_hex(self):
+        """Return argon2id PoW hash as hex string (block-hash display format, reversed bytes)."""
+        header_bytes = self._serialize_header()
+        digest = hash_secret_raw(
+            secret=header_bytes,
+            salt=header_bytes,
+            time_cost=3,
+            memory_cost=1024,
+            parallelism=1,
+            hash_len=32,
+            type=Type.ID,
+        )
+        return digest[::-1].hex()  # reversed bytes, same convention as hash_hex
+
     def __repr__(self):
         return "CBlockHeader(nVersion=%i hashPrevBlock=%064x hashMerkleRoot=%064x nTime=%s nBits=%08x nNonce=%08x)" \
             % (self.nVersion, self.hashPrevBlock, self.hashMerkleRoot,
