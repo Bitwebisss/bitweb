@@ -282,26 +282,24 @@ class InvalidMessagesTest(BitcoinTestFramework):
         self.log.info("Test headers message with invalid proof-of-work is logged as misbehaving and disconnects peer")
         blockheader_tip_hash = self.nodes[0].getbestblockhash()
         blockheader_tip = from_hex(CBlockHeader(), self.nodes[0].getblockheader(blockheader_tip_hash, False))
-    
+
         assert_equal(self.nodes[0].getblockchaininfo()['headers'], 0)
         blockheader = CBlockHeader()
         blockheader.hashPrevBlock = int(blockheader_tip_hash, 16)
         blockheader.nTime = int(time.time())
         blockheader.nBits = blockheader_tip.nBits
-    
-        # Майним через argon2id (реальный алгоритм), а не SHA256d
+
         target = uint256_from_compact(blockheader.nBits)
         while blockheader.argon2id > target:
             blockheader.nNonce += 1
-    
+
         peer = self.nodes[0].add_p2p_connection(P2PInterface())
         peer.send_and_ping(msg_headers([blockheader]))
         assert_equal(self.nodes[0].getblockchaininfo()['headers'], 1)
         chaintips = self.nodes[0].getchaintips()
         assert_equal(chaintips[0]['status'], 'headers-only')
         assert_equal(chaintips[0]['hash'], blockheader.hash_hex)
-    
-        # Инвалидируем PoW — ищем нонс где argon2id ВЫШЕ таргета
+
         while blockheader.argon2id <= target:
             blockheader.nNonce += 1
         with self.nodes[0].assert_debug_log(['Misbehaving', 'header with invalid proof of work']):
