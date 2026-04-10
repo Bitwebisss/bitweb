@@ -129,6 +129,7 @@ add_executable(test_bitweb
   validation_tests.cpp
   validationinterface_tests.cpp
   versionbits_tests.cpp
+  bip53_tests.cpp
 )
 
 include(TargetDataSources)
