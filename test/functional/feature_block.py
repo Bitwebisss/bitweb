@@ -187,7 +187,7 @@ class FullBlockTest(BitcoinTestFramework):
             self.next_block(blockname)
             badtx = template.get_tx()
             if TxTemplate != invalid_txs.InputMissing:
-                self.sign_tx(badtx, attempt_spend_tx, invalid_txs.SizeExactly64)
+                self.sign_tx(badtx, attempt_spend_tx)
             badblock = self.update_block(blockname, [badtx])
             reject_reason = (template.block_reject_reason or template.reject_reason)
             if reject_reason.startswith("mempool-script-verify-flag-failed"):
