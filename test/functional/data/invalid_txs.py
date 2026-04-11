@@ -109,13 +109,12 @@ class InputMissing(BadTxTemplate):
         tx = CTransaction()
         return tx
 
-# Bitweb Params
+
 # The following check prevents exploit of lack of merkle
-# tree depth commitment (CVE-2017-12842).
-# BIP-53: 64-byte transactions are now rejected at consensus level.
+# tree depth commitment (CVE-2017-12842)
 class SizeTooSmall(BadTxTemplate):
-    reject_reason = "bad-txns-64byte"
-    valid_in_block = False  # BIP-53 is consensus, not just policy
+    reject_reason = "tx-size-small"
+    valid_in_block = True
 
     def get_tx(self):
         tx = CTransaction()
