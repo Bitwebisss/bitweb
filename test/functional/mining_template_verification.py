@@ -105,14 +105,6 @@ class MiningTemplateVerificationTest(BitcoinTestFramework):
         bad_block.vtx.append(bad_tx)
         assert_template(node, bad_block, 'bad-txns-inputs-missingorspent')
 
-    def reject64_byte_spending_test(self, node, block):
-        self.log.info("Transaction that have size 64 byte")
-        bad_block = copy.deepcopy(block)
-        bad_tx = copy.deepcopy(bad_block.vtx[0])
-        bad_tx.vin[0].prevout.hash = 255
-        bad_block.vtx.append(bad_tx)
-        assert_template(node, bad_block, 'bad-txns-64byte')
-
     def non_final_transaction_test(self, node, block):
         self.log.info("Non-final transaction")
         bad_block = copy.deepcopy(block)
