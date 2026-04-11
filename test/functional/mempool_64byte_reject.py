@@ -1,17 +1,30 @@
+#!/usr/bin/env python3
+# Copyright (c) 2014-2021 The Bitcoin Core developers
+# Distributed under the MIT software license, see the accompanying
+# file COPYING or http://www.opensource.org/licenses/mit-license.php.
+
+from test_framework.test_framework import BitcoinTestFramework
+from test_framework.util import assert_equal
+
+
 class Mempool64ByteReject(BitcoinTestFramework):
     def set_test_params(self):
         self.num_nodes = 1
-        self.setup_clean_chain = True
 
     def run_test(self):
+        node = self.nodes[0]
+
+        # Historical 64-byte transaction.
+        # It should fail at CheckTransaction() before UTXO lookup matters.
         tx_hex = (
             "0200000001deb98691723fa71260ffca6ea0a7bc0a63b0a8a366e1b585caad47fb269a2ce4"
             "01000000030251b201000000010000000000000000016a00000000"
         )
 
-        res = self.nodes[0].testmempoolaccept([tx_hex])[0]
+        res = node.testmempoolaccept([tx_hex])[0]
         assert_equal(res["allowed"], False)
         assert_equal(res["reject-reason"], "bad-txns-64byte")
 
+
 if __name__ == "__main__":
-    Mempool64ByteReject().main()
+    Mempool64ByteReject(__file__).main()
