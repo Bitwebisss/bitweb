@@ -67,6 +67,28 @@ class P2PHandshakeTest(BitcoinTestFramework):
 
     def generate_at_mocktime(self, time):
         self.nodes[0].setmocktime(time)
+        best = node.getblockheader(node.getbestblockhash())
+        chain_info = node.getblockchaininfo()
+    
+        print(f"\n=== generate_at_mocktime ===")
+        print(f"  mocktime we set     : {t}")
+        print(f"  real time.time()    : {int(time.time())}")
+        print(f"  tip height          : {best['height']}")
+        print(f"  tip time (nTime)    : {best['time']}")
+        print(f"  mediantime (MTP)    : {best['mediantime']}")
+        print(f"  mocktime + MAX_FUT  : {t + 2*3600}")
+        print(f"  MTP < mocktime?     : {best['mediantime'] < t}")
+        print(f"  MTP < mocktime+2h?  : {best['mediantime'] < t + 2*3600}")
+        
+        self.nodes[0].setmocktime(t)
+        
+        # Что шлём ноде
+        tmpl = node.getblocktemplate({"rules": ["segwit"]})
+        print(f"  GBT curtime         : {tmpl['curtime']}")
+        print(f"  GBT mintime         : {tmpl['mintime']}")
+        print(f"  GBT bits            : {tmpl['bits']}")
+        print(f"  curtime > mintime?  : {tmpl['curtime'] > tmpl['mintime']}")
+        print(f"  curtime <= mock+2h? : {tmpl['curtime'] <= t + 2*3600}")
         self.generate(self.nodes[0], 1)
         self.nodes[0].setmocktime(0)
 
@@ -79,10 +101,10 @@ class P2PHandshakeTest(BitcoinTestFramework):
                                           DESIRABLE_SERVICE_FLAGS_FULL, expect_disconnect=False)
 
         self.log.info("Check that limited peers are only desired if the local chain is close to the tip (<24h)")
-        self.generate_at_mocktime(int(time.time()) - 2 * 25 * 3600)  # tip outside the 24h window, should fail
+        self.generate_at_mocktime(int(time.time()) - 25 * 3600)  # tip outside the 24h window, should fail
         self.test_desirable_service_flags(node, [NODE_NETWORK_LIMITED | NODE_WITNESS],
                                           DESIRABLE_SERVICE_FLAGS_FULL, expect_disconnect=True)
-        self.generate_at_mocktime(int(time.time()) - 2 * 23 * 3600)  # tip inside the 24h window, should succeed
+        self.generate_at_mocktime(int(time.time()) - 23 * 3600)  # tip inside the 24h window, should succeed
         self.test_desirable_service_flags(node, [NODE_NETWORK_LIMITED | NODE_WITNESS],
                                           DESIRABLE_SERVICE_FLAGS_PRUNED, expect_disconnect=False)
 
