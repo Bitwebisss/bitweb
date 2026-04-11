@@ -13,10 +13,8 @@ class Mempool64ByteReject(BitcoinTestFramework):
     def run_test(self):
         node = self.nodes[0]
 
-        # Даем ноде базовую цепочку (важно!)
         self.generate(node, 101)
 
-        # Историческая 64-byte транзакция
         tx_hex = (
             "0200000001deb98691723fa71260ffca6ea0a7bc0a63b0a8a366e1b585caad47fb269a2ce4"
             "01000000030251b201000000010000000000000000016a00000000"
@@ -25,9 +23,7 @@ class Mempool64ByteReject(BitcoinTestFramework):
         res = node.testmempoolaccept([tx_hex])[0]
 
         assert_equal(res["allowed"], False)
-
-        # reject-reason может отличаться в форке → проверяем мягко
-        assert "64" in res["reject-reason"]
+        assert_equal(res["reject-reason"], "bad-txns-64byte")
 
 
 if __name__ == '__main__':
