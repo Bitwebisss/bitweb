@@ -32,6 +32,10 @@ from test_framework.wallet import (
     MiniWallet,
 )
 
+from test_framework.script import (
+    CScript,
+)
+
 def assert_template(node, block, expect, *, rehash=True, submit=True, solve=True, expect_submit=None):
     if rehash:
         block.hashMerkleRoot = block.calc_merkle_root()
