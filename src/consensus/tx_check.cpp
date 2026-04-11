@@ -20,6 +20,7 @@ bool CheckTransaction(const CTransaction& tx, TxValidationState& state)
         return state.Invalid(TxValidationResult::TX_CONSENSUS, "bad-txns-oversize");
     }
 
+    // Bitweb Params
     // BIP-53: Reject transactions that are exactly 64 bytes when serialized
     // without witness. Such transactions create ambiguity in the Merkle tree.
     // Coinbase transactions are excluded: a 64-byte coinbase would require
