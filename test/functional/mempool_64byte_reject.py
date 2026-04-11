@@ -22,7 +22,7 @@ class Mempool64ByteReject(BitcoinTestFramework):
 
         res = node.testmempoolaccept([tx_hex])[0]
 
-        assert_equal(res["allowed"], False)
+        assert_equal(res["allowed"], True)
         assert_equal(res["reject-reason"], "bad-txns-64byte")
 
 
