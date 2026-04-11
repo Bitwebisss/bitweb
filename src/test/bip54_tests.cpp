@@ -2,7 +2,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 //
-// BIP-53: 64-byte transaction rejection tests.
+// BIP-54: 64-byte transaction rejection tests.
 // Adapted from bitcoin-inquisition bip54_tests.cpp (bip54_txsize case).
 // Targets the altcoin fork based on Bitcoin Core v30.2 (uses GetArgon2idPoWHash).
 
@@ -32,7 +32,7 @@ using namespace util::hex_literals;
 
 BOOST_AUTO_TEST_SUITE(bip54_tests)
 
-// Non-witness serialization size forbidden by BIP-53.
+// Non-witness serialization size forbidden by BIP-54.
 static constexpr uint32_t INVALID_TX_NONWITNESS_SIZE{64};
 
 /**
@@ -51,7 +51,7 @@ static void MineRegtestBlock(CBlock& block, const Consensus::Params& params)
 // PART 1 — Direct CheckTransaction() tests (unit-level, no block required)
 //
 // Calls CheckTransaction() in tx_check.cpp directly without going through the
-// block pipeline. This is the lowest-level verification that the BIP-53 rule
+// block pipeline. This is the lowest-level verification that the BIP-54 rule
 // fires at the correct layer.
 //
 // CheckTransaction() is called from three independent paths:
@@ -64,7 +64,7 @@ static void MineRegtestBlock(CBlock& block, const Consensus::Params& params)
 //
 // Cases covered here:
 //   (a) regular 64-byte tx         → rejected ("bad-txns-64byte")
-//   (b) 64-byte tx WITH witness     → rejected (BIP-53 uses TX_NO_WITNESS size;
+//   (b) 64-byte tx WITH witness     → rejected (BIP-54 uses TX_NO_WITNESS size;
 //                                     witness doesn't rescue a 64-byte non-witness tx)
 //   (c) 64-byte COINBASE tx         → accepted (explicit exemption: coinbase is the
 //                                     leftmost Merkle leaf, exploiting it would require
@@ -103,7 +103,7 @@ BOOST_AUTO_TEST_CASE(bip54_check_transaction_direct)
 
     // (b) 64-byte non-witness tx WITH witness — still rejected.
     //
-    // BIP-53 calls GetSerializeSize(TX_NO_WITNESS(tx)), so the witness bytes
+    // BIP-54 calls GetSerializeSize(TX_NO_WITNESS(tx)), so the witness bytes
     // are invisible to the check. A witness stack cannot rescue a tx whose
     // non-witness serialization is exactly 64 bytes.
     {
@@ -150,7 +150,7 @@ BOOST_AUTO_TEST_CASE(bip54_check_transaction_direct)
 
         state = TxValidationState{};
         BOOST_CHECK_MESSAGE(CheckTransaction(CTransaction{cb}, state),
-                            "64-byte coinbase must be accepted by CheckTransaction (BIP-53 exemption)");
+                            "64-byte coinbase must be accepted by CheckTransaction (BIP-54 exemption)");
         BOOST_CHECK(state.IsValid());
     }
 
@@ -183,8 +183,8 @@ BOOST_AUTO_TEST_CASE(bip54_check_transaction_direct)
 // PART 2 — AcceptBlock() integration tests
 //
 // Each transaction is wrapped in a mined regtest block and submitted via
-// AcceptBlock(). This exercises the full BIP-53 enforcement pipeline:
-//   CheckBlockHeader → CheckBlock → CheckTransaction (BIP-53 fires here)
+// AcceptBlock(). This exercises the full BIP-54 enforcement pipeline:
+//   CheckBlockHeader → CheckBlock → CheckTransaction (BIP-54 fires here)
 //
 // AcceptBlock() return value semantics in this test:
 //   • INVALID (64-byte tx): CheckBlock() fires "bad-txns-64byte".
@@ -199,9 +199,9 @@ BOOST_AUTO_TEST_CASE(bip54_check_transaction_direct)
 //     "consensus-invalid". The chain tip therefore stays at height 0 throughout
 //     (confirmed by the absence of UpdateTip logs for these blocks).
 //
-//   In other words: accepted=true means "BIP-53 check passed (and block was
+//   In other words: accepted=true means "BIP-54 check passed (and block was
 //   stored)", NOT "block fully connected to the chain". The test correctly
-//   isolates the BIP-53 rule; full connection is not the subject of this test.
+//   isolates the BIP-54 rule; full connection is not the subject of this test.
 //
 // All size assertions use BOOST_REQUIRE (abort on failure) rather than
 // BOOST_CHECK (continue on failure), so a miscalculated transaction can never
@@ -249,7 +249,7 @@ BOOST_AUTO_TEST_CASE(bip54_txsize)
     }
 
     // 60-byte non-witness tx with witness data — valid.
-    // BIP-53 checks the NON-WITNESS serialization only; a witness on a 60-byte
+    // BIP-54 checks the NON-WITNESS serialization only; a witness on a 60-byte
     // non-witness tx cannot push it over the 64-byte boundary.
     {
         CMutableTransaction t{base};
@@ -320,9 +320,9 @@ BOOST_AUTO_TEST_CASE(bip54_txsize)
     }
 
     // ------------------------------------------------------------------
-    // Historical 64-byte transactions sourced from Chris Stewart's BIP-53
+    // Historical 64-byte transactions sourced from Chris Stewart's BIP-54
     // reference list. These are real transactions from the Bitcoin mainnet
-    // that would be invalid under BIP-53. Each has:
+    // that would be invalid under BIP-54. Each has:
     //   - 3-byte scriptSig (1-byte push opcode + 2 data bytes)
     //   - 1-byte scriptPubKey (OP_RETURN = 0x6a)
     //   - value = 0
