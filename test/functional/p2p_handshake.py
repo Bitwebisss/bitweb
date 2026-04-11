@@ -66,7 +66,20 @@ class P2PHandshakeTest(BitcoinTestFramework):
                 self.add_outbound_connection(node, conn_type, services, wait_for_disconnect=False)
 
     def generate_at_mocktime(self, time):
+        info = self.nodes[0].getblockchaininfo()
+        self.log.info(f"=== generate_at_mocktime ===")
+        self.log.info(f"  mocktime to set : {time}")
+        self.log.info(f"  tip height      : {info['blocks']}")
+        self.log.info(f"  mediantime(MTP) : {info['mediantime']}")
+        self.log.info(f"  mocktime + 2h   : {time + 2*3600}")
+        self.log.info(f"  MTP < mocktime? : {info['mediantime'] < time}")
+    
         self.nodes[0].setmocktime(time)
+    
+        tmpl = self.nodes[0].getblocktemplate({"rules": ["segwit"]})
+        self.log.info(f"  GBT mintime     : {tmpl['mintime']}")
+        self.log.info(f"  GBT curtime     : {tmpl['curtime']}")
+    
         self.generate(self.nodes[0], 1)
         self.nodes[0].setmocktime(0)
 
