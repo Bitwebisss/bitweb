@@ -67,27 +67,6 @@ class P2PHandshakeTest(BitcoinTestFramework):
 
     def generate_at_mocktime(self, time):
         self.nodes[0].setmocktime(time)
-        info = self.nodes[0].getblockchaininfo()
-    
-        print(f"\n=== generate_at_mocktime ===")
-        print(f"  mocktime we set     : {t}")
-        print(f"  real time.time()    : {int(time.time())}")
-        print(f"  tip height          : {best['height']}")
-        print(f"  tip time (nTime)    : {best['time']}")
-        print(f"  mediantime (MTP)    : {best['mediantime']}")
-        print(f"  mocktime + MAX_FUT  : {t + 2*3600}")
-        print(f"  MTP < mocktime?     : {best['mediantime'] < t}")
-        print(f"  MTP < mocktime+2h?  : {best['mediantime'] < t + 2*3600}")
-        
-        self.nodes[0].setmocktime(t)
-        
-        # Что шлём ноде
-        tmpl = node.getblocktemplate({"rules": ["segwit"]})
-        print(f"  GBT curtime         : {tmpl['curtime']}")
-        print(f"  GBT mintime         : {tmpl['mintime']}")
-        print(f"  GBT bits            : {tmpl['bits']}")
-        print(f"  curtime > mintime?  : {tmpl['curtime'] > tmpl['mintime']}")
-        print(f"  curtime <= mock+2h? : {tmpl['curtime'] <= t + 2*3600}")
         self.generate(self.nodes[0], 1)
         self.nodes[0].setmocktime(0)
 
