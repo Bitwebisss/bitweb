@@ -52,7 +52,7 @@ from test_framework.wallet import (
 
 DIFFICULTY_ADJUSTMENT_INTERVAL = 1
 MAX_FUTURE_BLOCK_TIME = 2 * 3600
-MAX_TIMEWARP = 600
+MAX_TIMEWARP = 300
 VERSIONBITS_TOP_BITS = 0x20000000
 VERSIONBITS_DEPLOYMENT_TESTDUMMY_BIT = 28
 DEFAULT_BLOCK_MIN_TX_FEE = 1 # default `-blockmintxfee` setting [sat/kvB]
@@ -69,7 +69,7 @@ class MiningTest(BitcoinTestFramework):
 
     def mine_chain(self):
         self.log.info('Create some old blocks')
-        for t in range(TIME_GENESIS_BLOCK, TIME_GENESIS_BLOCK + 200 * 600, 600):
+        for t in range(TIME_GENESIS_BLOCK, TIME_GENESIS_BLOCK + 200 * 300, 300):
             self.nodes[0].setmocktime(t)
             self.generate(self.wallet, 1, sync_fun=self.no_op)
         mining_info = self.nodes[0].getmininginfo()
@@ -197,10 +197,10 @@ class MiningTest(BitcoinTestFramework):
 
         self.log.info("Mine until the last block of the retarget period")
         blockchain_info = self.nodes[0].getblockchaininfo()
-        n = DIFFICULTY_ADJUSTMENT_INTERVAL - blockchain_info['blocks'] % DIFFICULTY_ADJUSTMENT_INTERVAL - 2
+
         t = blockchain_info['time']
 
-        for _ in range(n):
+        for _ in range(12):
             t += 300
             self.nodes[0].setmocktime(t)
             self.generate(self.wallet, 1, sync_fun=self.no_op)
