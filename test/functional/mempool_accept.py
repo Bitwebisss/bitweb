@@ -414,6 +414,23 @@ class MempoolAcceptanceTest(BitcoinTestFramework):
         tx.vin.append(CTxIn(COutPoint(int(seed_tx["txid"], 16), seed_tx["sent_vout"]), b"", SEQUENCE_FINAL))
         tx.wit.vtxinwit = [CTxInWitness()]
         tx.wit.vtxinwit[0].scriptWitness.stack = [CScript([OP_TRUE])]
+        tx.vout.append(CTxOut(0, CScript([OP_RETURN] + ([OP_0] * (MIN_PADDING - 3)))))
+        # Note it's only non-witness size that matters!
+        assert_equal(len(tx.serialize_without_witness()), 63)
+        assert_equal(MIN_STANDARD_TX_NONWITNESS_SIZE - 1, 64)
+        assert_greater_than(len(tx.serialize()), 63)
+
+        self.check_mempool_result(
+            result_expected=[{'txid': tx.txid_hex, 'allowed': False, 'reject-reason': 'tx-size-small'}],
+            rawtxs=[tx.serialize().hex()],
+            maxfeerate=0,
+        )
+
+        self.log.info('A tiny transaction(in non-witness bytes) that is disallowed')
+        tx = CTransaction()
+        tx.vin.append(CTxIn(COutPoint(int(seed_tx["txid"], 16), seed_tx["sent_vout"]), b"", SEQUENCE_FINAL))
+        tx.wit.vtxinwit = [CTxInWitness()]
+        tx.wit.vtxinwit[0].scriptWitness.stack = [CScript([OP_TRUE])]
         tx.vout.append(CTxOut(0, CScript([OP_RETURN] + ([OP_0] * (MIN_PADDING - 2)))))
         # Note it's only non-witness size that matters!
         assert_equal(len(tx.serialize_without_witness()), 64)
@@ -421,7 +438,7 @@ class MempoolAcceptanceTest(BitcoinTestFramework):
         assert_greater_than(len(tx.serialize()), 64)
 
         self.check_mempool_result(
-            result_expected=[{'txid': tx.txid_hex, 'allowed': False, 'reject-reason': 'tx-size-small'}],
+            result_expected=[{'txid': tx.txid_hex, 'allowed': False, 'reject-reason': 'bad-txns-64byte'}],
             rawtxs=[tx.serialize().hex()],
             maxfeerate=0,
         )
