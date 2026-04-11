@@ -110,7 +110,7 @@ BASE_SCRIPTS = [
     'wallet_fundrawtransaction.py',
     'wallet_bumpfee.py',
     'wallet_v3_txs.py',
-    'mempool_64byte_reject.py'
+    'mempool_64byte_reject.py',
     'wallet_backup.py',
     'feature_segwit.py --v2transport',
     'feature_segwit.py --v1transport',
