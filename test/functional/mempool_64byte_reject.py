@@ -1,7 +1,4 @@
 #!/usr/bin/env python3
-# Copyright (c) 2014-2021 The Bitcoin Core developers
-# Distributed under the MIT software license, see the accompanying
-# file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 from test_framework.test_framework import BitcoinTestFramework
 from test_framework.util import assert_equal
@@ -14,8 +11,6 @@ class Mempool64ByteReject(BitcoinTestFramework):
     def run_test(self):
         node = self.nodes[0]
 
-        # Historical 64-byte transaction.
-        # It should fail at CheckTransaction() before UTXO lookup matters.
         tx_hex = (
             "0200000001deb98691723fa71260ffca6ea0a7bc0a63b0a8a366e1b585caad47fb269a2ce4"
             "01000000030251b201000000010000000000000000016a00000000"
