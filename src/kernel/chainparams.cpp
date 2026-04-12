@@ -517,7 +517,7 @@ public:
         consensus.nPowTargetSpacing = 5 * 60;
         consensus.lwmaAveragingWindow = 144;
         consensus.fPowAllowMinDifficultyBlocks = true;
-        consensus.enforce_BIP94 = opts.enforce_bip94;
+        consensus.enforce_BIP94 = false;
         consensus.fPowNoRetargeting = true;
 
         consensus.vDeployments[Consensus::DEPLOYMENT_TESTDUMMY].bit = 28;
