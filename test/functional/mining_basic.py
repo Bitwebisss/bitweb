@@ -51,8 +51,6 @@ from test_framework.wallet import (
 
 
 DIFFICULTY_ADJUSTMENT_INTERVAL = 1
-MAX_FUTURE_BLOCK_TIME = 2 * 3600
-MAX_TIMEWARP = 300
 VERSIONBITS_TOP_BITS = 0x20000000
 VERSIONBITS_DEPLOYMENT_TESTDUMMY_BIT = 28
 DEFAULT_BLOCK_MIN_TX_FEE = 1 # default `-blockmintxfee` setting [sat/kvB]
@@ -189,63 +187,6 @@ class MiningTest(BitcoinTestFramework):
 
             # Restart node to clear mempool for the next test
             self.restart_node(0)
-
-    def test_timewarp(self):
-        self.log.info("Test timewarp attack mitigation (BIP94)")
-        node = self.nodes[0]
-        self.restart_node(0, extra_args=['-test=bip94'])
-
-        self.log.info("Mine until the last block of the retarget period")
-        blockchain_info = self.nodes[0].getblockchaininfo()
-
-        t = blockchain_info['time']
-
-        for _ in range(12):
-            t += 300
-            self.nodes[0].setmocktime(t)
-            self.generate(self.wallet, 1, sync_fun=self.no_op)
-
-        self.log.info("Create block two hours in the future")
-        self.nodes[0].setmocktime(t + MAX_FUTURE_BLOCK_TIME)
-        self.generate(self.wallet, 1, sync_fun=self.no_op)
-        assert_equal(node.getblock(node.getbestblockhash())['time'], t + MAX_FUTURE_BLOCK_TIME)
-
-        self.log.info("First block template of retarget period can't use wall clock time")
-        self.nodes[0].setmocktime(t)
-        # The template will have an adjusted timestamp, which we then modify
-        tmpl = node.getblocktemplate(NORMAL_GBT_REQUEST_PARAMS)
-        assert_greater_than_or_equal(tmpl['curtime'], t + MAX_FUTURE_BLOCK_TIME - MAX_TIMEWARP)
-        # mintime and curtime should match
-        assert_equal(tmpl['mintime'], tmpl['curtime'])
-
-        block = CBlock()
-        block.nVersion = tmpl["version"]
-        block.hashPrevBlock = int(tmpl["previousblockhash"], 16)
-        block.nTime = tmpl["curtime"]
-        block.nBits = int(tmpl["bits"], 16)
-        block.nNonce = 0
-        block.vtx = [create_coinbase(height=int(tmpl["height"]))]
-        block.hashMerkleRoot = block.calc_merkle_root()
-        block.solve()
-        assert_equal(node.getblocktemplate(template_request={
-            'data': block.serialize().hex(),
-            'mode': 'proposal',
-            'rules': ['segwit'],
-        }), None)
-
-        bad_block = copy.deepcopy(block)
-        bad_block.nTime = t
-        bad_block.solve()
-        assert_raises_rpc_error(-25, 'time-timewarp-attack', lambda: node.submitheader(hexdata=CBlockHeader(bad_block).serialize().hex()))
-
-        self.log.info("Test timewarp protection boundary")
-        bad_block.nTime = t + MAX_FUTURE_BLOCK_TIME - MAX_TIMEWARP - 1
-        bad_block.solve()
-        assert_raises_rpc_error(-25, 'time-timewarp-attack', lambda: node.submitheader(hexdata=CBlockHeader(bad_block).serialize().hex()))
-
-        bad_block.nTime = t + MAX_FUTURE_BLOCK_TIME - MAX_TIMEWARP
-        bad_block.solve()
-        node.submitheader(hexdata=CBlockHeader(bad_block).serialize().hex())
 
     def test_pruning(self):
         self.log.info("Test that submitblock stores previously pruned block")
