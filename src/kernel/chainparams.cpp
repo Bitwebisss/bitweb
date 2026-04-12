@@ -513,7 +513,7 @@ public:
         consensus.SegwitHeight = 0; // Always active unless overridden
         consensus.MinBIP9WarningHeight = 0;
         consensus.powLimit = uint256{"7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"};
-        consensus.nPowTargetTimespan = 24 * 10 * 60; // 5m
+        consensus.nPowTargetTimespan = 5 * 60; // 5m
         consensus.nPowTargetSpacing = 5 * 60;
         consensus.lwmaAveragingWindow = 144;
         consensus.fPowAllowMinDifficultyBlocks = true;
