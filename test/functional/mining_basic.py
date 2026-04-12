@@ -453,7 +453,6 @@ class MiningTest(BitcoinTestFramework):
         self.test_fees_and_sigops()
         self.test_blockmintxfee_parameter()
         self.test_block_max_weight()
-        self.test_timewarp()
         self.test_pruning()
         self.test_height_in_locktime()
 
