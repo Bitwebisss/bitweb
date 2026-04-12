@@ -117,7 +117,7 @@ CBlockHeader ConsumeHeader(FuzzedDataProvider& fuzzed_data_provider, const uint2
     if (fuzzed_data_provider.ConsumeBool()) {
         header.nBits = prev_nbits;
     } else {
-        arith_uint256 lower_target = UintToArith256(uint256{"0000000000000000000342190000000000000000000000000000000000000000"});
+        arith_uint256 lower_target = UintToArith256(uint256{"000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"});
         arith_uint256 upper_target = UintToArith256(uint256{"000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"});
         arith_uint256 target = ConsumeArithUInt256InRange(fuzzed_data_provider, lower_target, upper_target);
         header.nBits = target.GetCompact();
