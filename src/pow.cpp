@@ -56,6 +56,7 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHead
     return Lwma3CalculateNextWorkRequired(pindexLast, params);
 }
 
+/*
 unsigned int CalculateNextWorkRequired(const CBlockIndex* pindexLast, int64_t nFirstBlockTime, const Consensus::Params& params)
 {
     if (params.fPowNoRetargeting)
@@ -92,6 +93,7 @@ unsigned int CalculateNextWorkRequired(const CBlockIndex* pindexLast, int64_t nF
 
     return bnNew.GetCompact();
 }
+*/
 
 // LWMA-1 for BTC & Zcash clones
 // Copyright (c) 2017-2019 The Bitcoin Gold developers, Zawy, iamstenman (Microbitcoin)
