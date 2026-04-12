@@ -87,7 +87,7 @@ FUZZ_TARGET(pow, .init = initialize_pow)
     }
 }
 */
-
+/*
 FUZZ_TARGET(pow_transition, .init = initialize_pow)
 {
     FuzzedDataProvider fuzzed_data_provider(buffer.data(), buffer.size());
@@ -122,4 +122,54 @@ FUZZ_TARGET(pow_transition, .init = initialize_pow)
     auto last_block{blocks.back().get()};
     unsigned int new_nbits{GetNextWorkRequired(last_block, nullptr, consensus_params)};
     Assert(PermittedDifficultyTransition(consensus_params, last_block->nHeight + 1, last_block->nBits, new_nbits));
+}
+*/
+FUZZ_TARGET(pow_transition, .init = initialize_pow)
+{
+    FuzzedDataProvider fuzzed_data_provider(buffer.data(), buffer.size());
+    const Consensus::Params& consensus_params{Params().GetConsensus()};
+    std::vector<std::unique_ptr<CBlockIndex>> blocks;
+
+    const uint32_t old_time{fuzzed_data_provider.ConsumeIntegral<uint32_t>()};
+    const uint32_t new_time{fuzzed_data_provider.ConsumeIntegral<uint32_t>()};
+    const int32_t version{fuzzed_data_provider.ConsumeIntegral<int32_t>()};
+    uint32_t nbits{fuzzed_data_provider.ConsumeIntegral<uint32_t>()};
+
+    const arith_uint256 pow_limit = UintToArith256(consensus_params.powLimit);
+    arith_uint256 old_target;
+    old_target.SetCompact(nbits);
+    if (old_target > pow_limit) {
+        nbits = pow_limit.GetCompact();
+    }
+
+    // N=576, L=N+1=577. Нужен height > 577 для реального расчёта LWMA3.
+    // Последний блок имеет height = num_blocks-1 = N+2 = 578 > L=577. ✓
+    const int64_t N = consensus_params.lwmaAveragingWindow;
+    const int num_blocks = static_cast<int>(N + 3); // 579 блоков, heights 0..578
+
+    for (int height = 0; height < num_blocks; ++height) {
+        CBlockHeader header;
+        header.nVersion = version;
+        header.nBits = nbits;
+        header.nTime = (height == num_blocks - 1) ? new_time : old_time;
+
+        auto current_block{std::make_unique<CBlockIndex>(header)};
+        current_block->pprev = blocks.empty() ? nullptr : blocks.back().get();
+        current_block->nHeight = height;
+        blocks.emplace_back(std::move(current_block));
+    }
+
+    auto last_block{blocks.back().get()};
+    unsigned int new_nbits{GetNextWorkRequired(last_block, nullptr, consensus_params)};
+
+    // Результат не выходит за powLimit
+    arith_uint256 new_target;
+    new_target.SetCompact(new_nbits);
+    Assert(new_target <= pow_limit);
+
+    Assert(PermittedDifficultyTransition(
+        consensus_params,
+        last_block->nHeight + 1,
+        last_block->nBits,
+        new_nbits));
 }
