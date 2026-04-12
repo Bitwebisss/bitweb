@@ -220,11 +220,6 @@ private:
     void SortForBlock(const CTxMemPool::setEntries& package, std::vector<CTxMemPool::txiter>& sortedEntries);
 };
 
-/**
- * Get the minimum time a miner should use in the next block. This always
- * accounts for the BIP94 timewarp rule, so does not necessarily reflect the
- * consensus limit.
- */
 int64_t GetMinimumTime(const CBlockIndex* pindexPrev);
 
 int64_t UpdateTime(CBlockHeader* pblock, const Consensus::Params& consensusParams, const CBlockIndex* pindexPrev);
