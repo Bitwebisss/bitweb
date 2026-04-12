@@ -105,7 +105,6 @@ public:
         consensus.nPowTargetSpacing = 5 * 60;
         consensus.lwmaAveragingWindow = 576;
         consensus.fPowAllowMinDifficultyBlocks = false;
-        consensus.enforce_BIP94 = false;
         consensus.fPowNoRetargeting = false;
         consensus.vDeployments[Consensus::DEPLOYMENT_TESTDUMMY].bit = 28;
         consensus.vDeployments[Consensus::DEPLOYMENT_TESTDUMMY].nStartTime = Consensus::BIP9Deployment::NEVER_ACTIVE;
@@ -211,7 +210,6 @@ public:
         consensus.nPowTargetSpacing = 5 * 60;
         consensus.lwmaAveragingWindow = 576;
         consensus.fPowAllowMinDifficultyBlocks = false;
-        consensus.enforce_BIP94 = false;
         consensus.fPowNoRetargeting = false;
         consensus.vDeployments[Consensus::DEPLOYMENT_TESTDUMMY].bit = 28;
         consensus.vDeployments[Consensus::DEPLOYMENT_TESTDUMMY].nStartTime = Consensus::BIP9Deployment::NEVER_ACTIVE;
@@ -305,7 +303,6 @@ public:
         consensus.nPowTargetSpacing = 5 * 60;
         consensus.lwmaAveragingWindow = 288;
         consensus.fPowAllowMinDifficultyBlocks = false;
-        consensus.enforce_BIP94 = true;
         consensus.fPowNoRetargeting = false;
 
         consensus.vDeployments[Consensus::DEPLOYMENT_TESTDUMMY].bit = 28;
@@ -443,7 +440,6 @@ public:
         consensus.nPowTargetSpacing = 5 * 60;
         consensus.lwmaAveragingWindow = 576;
         consensus.fPowAllowMinDifficultyBlocks = false;
-        consensus.enforce_BIP94 = false;
         consensus.fPowNoRetargeting = false;
         consensus.MinBIP9WarningHeight = 0;
         consensus.powLimit = uint256{"00377ae000000000000000000000000000000000000000000000000000000000"};
@@ -517,7 +513,6 @@ public:
         consensus.nPowTargetSpacing = 5 * 60;
         consensus.lwmaAveragingWindow = 144;
         consensus.fPowAllowMinDifficultyBlocks = true;
-        consensus.enforce_BIP94 = false;
         consensus.fPowNoRetargeting = true;
 
         consensus.vDeployments[Consensus::DEPLOYMENT_TESTDUMMY].bit = 28;
