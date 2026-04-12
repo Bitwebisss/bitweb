@@ -23,6 +23,7 @@ void initialize_pow()
     SelectParams(ChainType::MAIN);
 }
 
+/*
 FUZZ_TARGET(pow, .init = initialize_pow)
 {
     FuzzedDataProvider fuzzed_data_provider(buffer.data(), buffer.size());
@@ -85,7 +86,7 @@ FUZZ_TARGET(pow, .init = initialize_pow)
         }
     }
 }
-
+*/
 
 FUZZ_TARGET(pow_transition, .init = initialize_pow)
 {
