@@ -22,7 +22,7 @@ class CChainParams;
 class ValidationSignals;
 
 static constexpr bool DEFAULT_CHECKPOINTS_ENABLED{true}; // Checkpoints restored
-static constexpr auto DEFAULT_MAX_TIP_AGE{24h};
+static constexpr auto DEFAULT_MAX_TIP_AGE{12h}; // Bitweb Params we have a block time of 300, so now that's 144 blocks = 12 hours.
 
 namespace kernel {
 
