@@ -244,6 +244,13 @@ FUZZ_TARGET(p2p_headers_presync, .init = initialize)
     total_work += CalculateClaimedHeadersWork(all_headers);
 
     // This test should never create a chain with more work than MinimumChainWork.
+    // TODO: Restore when chain has accumulated sufficient work.
+    // Minimum required: ~8640 blocks (~30 days at 5 min/block spacing).
+    // Steps to restore:
+    //   1. Run: bitcoin-cli getblockchaininfo | grep chainwork
+    //   2. Set consensus.nMinimumChainWork = uint256{"<value>"} in chainparams.cpp
+    //   3. Uncomment the assertion below.
+
     assert(total_work < chainman.MinimumChainWork());
 
     // The headers/blocks sent in this test should never be stored, as the chains don't have the work required
