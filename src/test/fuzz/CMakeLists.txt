@@ -88,6 +88,7 @@ add_executable(fuzz
   policy_estimator_io.cpp
   poolresource.cpp
   pow.cpp
+  pow_argon2id.cpp  # Bitweb Params: fuzz Argon2id PoW hash
   prevector.cpp
   primitives_transaction.cpp
   process_message.cpp
